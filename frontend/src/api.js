@@ -15,19 +15,11 @@ api.interceptors.request.use(
 
     if (user) {
       // User is signed in with Firebase → get ID token
-      const token = await user.getIdToken(/* forceRefresh */ false);
+      // Force refresh token to ensure we have the latest user data
+      const token = await user.getIdToken(/* forceRefresh */ true);
       config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      // Optional: dev fallback (only if you still want x-dev-user when not logged in)
-      if (import.meta.env.DEV) {
-        config.headers["x-dev-user"] = JSON.stringify({
-          id: "11111111-1111-1111-1111-111111111111",
-          role: "hiker",
-          email: "hiker@example.com",
-          name: "Demo Hiker",
-        });
-      }
     }
+    // Removed dev fallback - should not use x-dev-user when user is logged in
 
     return config;
   },

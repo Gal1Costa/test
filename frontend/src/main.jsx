@@ -1,48 +1,72 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Routes, Route, Link, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Explore from "./pages/Explore";
 import Profile from "./pages/Profile";
 import HikeDetails from "./pages/HikeDetails";
 import ErrorBoundary from "./ErrorBoundary";
-import AppAuthBar from "./AppAuthBar";
+import Header from "./components/Header";
+import AuthModal from "./components/AuthModal.jsx";
+import { auth, onAuthStateChanged } from "./firebase";
 
 function App() {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalTab, setModalTab] = useState('login');
+  const [modalKey, setModalKey] = useState(0);
+  const [user, setUser] = useState(auth.currentUser);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    return () => unsub();
+  }, []);
+
+  const handleOpenAuthModal = (tab) => {
+    setModalTab(tab);
+    setModalKey(k => k + 1);
+    setModalOpen(true);
+  };
+
+  // Listen for custom event to open auth modal
+  useEffect(() => {
+    const handleOpenAuth = (event) => {
+      const tab = event.detail?.tab || 'login';
+      handleOpenAuthModal(tab);
+    };
+    window.addEventListener('openAuthModal', handleOpenAuth);
+    return () => window.removeEventListener('openAuthModal', handleOpenAuth);
+  }, []);
+
   return (
     <BrowserRouter>
-      <div style={{ padding: 20, fontFamily: "system-ui, sans-serif" }}>
-        <header
-          style={{
-            marginBottom: 16,
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-          }}
-        >
-          <h1>TrailHub (dev)</h1>
-          <nav style={{ display: "flex", gap: 8 }}>
-            <Link to="/explore">Explore</Link>
-            <span>|</span>
-            <Link to="/profile">My Profile</Link>
-          </nav>
+      <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh" }}>
+        <Header onOpenAuthModal={handleOpenAuthModal} />
+        
+        <div style={{ padding: 20 }}>
 
-          {/* Auth bar on the right */}
-          <AppAuthBar />
-        </header>
+          <Routes>
+            {/* redirect root to /explore */}
+            <Route path="/" element={<Navigate to="/explore" replace />} />
 
-        <Routes>
-          {/* redirect root to /explore */}
-          <Route path="/" element={<Navigate to="/explore" replace />} />
+            {/* main pages */}
+            <Route path="/explore" element={<Explore />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/hikes/:id" element={<HikeDetails />} />
+            <Route path="/hikes/create" element={<div style={{ padding: 40, textAlign: 'center' }}><h2>Create Hike</h2><p>Coming soon...</p></div>} />
 
-          {/* main pages */}
-          <Route path="/explore" element={<Explore />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/hikes/:id" element={<HikeDetails />} />
+            {/* catch-all → back to explore */}
+            <Route path="*" element={<Navigate to="/explore" replace />} />
+          </Routes>
+        </div>
 
-          {/* catch-all → back to explore */}
-          <Route path="*" element={<Navigate to="/explore" replace />} />
-        </Routes>
+        {modalOpen && (
+          <AuthModal 
+            key={`${modalTab}-${modalKey}`}
+            open={modalOpen} 
+            onClose={() => setModalOpen(false)} 
+            initialTab={modalTab} 
+          />
+        )}
       </div>
     </BrowserRouter>
   );

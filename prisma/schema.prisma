@@ -8,24 +8,54 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  name      String?
-  role      String
-  createdAt DateTime  @default(now())
-  bookings  Booking[]
-  guides    Guide?
-  reviews   Review[]
+  id           String        @id @default(uuid())
+  firebaseUid  String?       @unique
+  email        String        @unique
+  name         String?
+  role         String
+  createdAt    DateTime      @default(now())
+  bookings     Booking[]
+  guide        Guide?
+  hikerProfile HikerProfile?
+  reviews      Review[]
 }
 
 model Guide {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  bio       String?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
-  hikes     Hike[]
-  reviews   Review[]
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  bio             String?
+  location        String?
+  photoUrl        String?
+  displayName     String?
+  languages       String[] // Array of languages spoken
+  yearsExperience Int?
+  isVerified      Boolean   @default(false)
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  profileSlug     String?
+  isFeatured      Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id])
+  hikes           Hike[]
+  reviews         Review[]
+}
+
+model HikerProfile {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  bio                 String?
+  location            String?
+  photoUrl            String?
+  displayName         String?
+  fitnessLevel        String? // e.g., "beginner", "intermediate", "advanced"
+  preferredDifficulty String[] // Array of preferred difficulty levels
+  interests           String[] // Array of hiking interests
+  emergencyContact    String?
+  medicalInfo         String? // Medical conditions/allergies
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id])
 }
 
 model Hike {

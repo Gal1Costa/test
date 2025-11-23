@@ -2,9 +2,13 @@
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updatePassword,
+  updateProfile,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
 } from "firebase/auth";
 
 // 🔐 Your web app's Firebase configuration (from Firebase Console)
@@ -23,7 +27,15 @@ const app = initializeApp(firebaseConfig);
 
 // Firebase Auth
 const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
 
-// Re-export helpers we’ll use
-export { auth, googleProvider, signInWithPopup, onAuthStateChanged };
+// Re-export helpers we'll use
+export { 
+  auth, 
+  onAuthStateChanged, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  updatePassword,
+  updateProfile,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+};

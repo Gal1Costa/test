@@ -1,28 +1,58 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { auth, onAuthStateChanged } from "../firebase";
 import api from "../api";
 
 export default function HikeDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [hike, setHike] = useState(null);
   const [joinedIds, setJoinedIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [user, setUser] = useState(auth.currentUser);
+  const [userProfile, setUserProfile] = useState(null);
+
+  // Listen for auth state changes
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      // Clear joined IDs when user logs out
+      if (!u) {
+        setJoinedIds([]);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   async function load() {
     setLoading(true);
     setErr("");
     try {
-      const [hikeRes, profileRes] = await Promise.all([
-        api.get(`/api/hikes/${id}`),
-        api.get("/api/profile"),
-      ]);
-
+      // Always load hike details
+      const hikeRes = await api.get(`/api/hikes/${id}`);
       setHike(hikeRes.data || null);
 
-      const bookings = profileRes.data?.bookings || [];
-      const joined = bookings.filter((b) => b.hikeId).map((b) => b.hikeId);
-      setJoinedIds(joined);
+      // Only load profile/bookings if user is logged in
+      if (user) {
+        try {
+          const profileRes = await api.get("/api/profile");
+          const profile = profileRes.data;
+          setUserProfile(profile);
+          const bookings = profile?.bookings || [];
+          const joined = bookings.filter((b) => b.hikeId).map((b) => b.hikeId);
+          setJoinedIds(joined);
+        } catch (profileErr) {
+          // If profile fails, user might not be authenticated
+          console.warn("Failed to load profile:", profileErr);
+          setJoinedIds([]);
+          setUserProfile(null);
+        }
+      } else {
+        // User is not logged in, clear joined IDs
+        setJoinedIds([]);
+        setUserProfile(null);
+      }
     } catch (e) {
       console.error("Failed to load hike details", e);
       setErr(
@@ -35,17 +65,29 @@ export default function HikeDetails() {
 
   useEffect(() => {
     load();
-  }, [id]);
+  }, [id, user]);
 
   const joinedSet = useMemo(() => new Set(joinedIds), [joinedIds]);
 
   async function handleJoin() {
+    // If user is not logged in, trigger login modal via custom event
+    if (!user) {
+      // Dispatch custom event to open auth modal
+      window.dispatchEvent(new CustomEvent('openAuthModal', { detail: { tab: 'login' } }));
+      return;
+    }
+
     try {
       await api.post(`/api/hikes/${id}/join`);
       await load();
     } catch (e) {
       console.error("Join failed", e);
-      alert(e?.response?.data?.error || "Failed to join hike");
+      // If unauthorized, trigger login modal
+      if (e?.response?.status === 401) {
+        window.dispatchEvent(new CustomEvent('openAuthModal', { detail: { tab: 'login' } }));
+      } else {
+        alert(e?.response?.data?.error || "Failed to join hike");
+      }
     }
   }
 
@@ -74,12 +116,22 @@ export default function HikeDetails() {
     hike.isFull || (capacity > 0 && participantsCount >= capacity);
   const isJoined = joinedSet.has(hike.id);
 
+  // Check if current user is the creator of this hike
+  const isCreator = userProfile && (
+    (userProfile.role === 'guide' && userProfile.createdHikes?.some(h => h.id === hike.id)) ||
+    (hike.guideId && userProfile.guide?.id === hike.guideId)
+  );
+
   let buttonLabel = "";
   let buttonDisabled = true;
   let buttonOnClick = null;
 
   if (isPast) {
     buttonLabel = "Past";
+    buttonDisabled = true;
+  } else if (isCreator) {
+    // User created this hike, they cannot join it
+    buttonLabel = "Your Hike";
     buttonDisabled = true;
   } else if (isJoined) {
     buttonLabel = "Leave";

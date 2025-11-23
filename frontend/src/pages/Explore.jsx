@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { auth, onAuthStateChanged } from "../firebase";
 import api from "../api";
 
 export default function Explore() {
@@ -8,27 +9,52 @@ export default function Explore() {
   const [filter, setFilter] = useState("upcoming"); // "upcoming" | "past" | "all"
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [user, setUser] = useState(auth.currentUser);
+  const [userProfile, setUserProfile] = useState(null);
+
+  // Listen for auth state changes
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      // Clear joined IDs when user logs out
+      if (!u) {
+        setJoinedIds([]);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   async function load() {
     setLoading(true);
     setErr("");
     try {
-      // Get all hikes + profile (for joined info)
-      const [hikesRes, profileRes] = await Promise.all([
-        api.get("/api/hikes"),
-        api.get("/api/profile"),
-      ]);
-
+      // Always get hikes
+      const hikesRes = await api.get("/api/hikes");
       const hikesData = hikesRes.data || [];
-      const profile = profileRes.data || {};
-      const bookings = profile.bookings || [];
-
-      const joined = bookings
-        .filter((b) => b.hikeId)
-        .map((b) => b.hikeId);
-
       setHikes(hikesData);
-      setJoinedIds(joined);
+
+      // Only get profile/bookings if user is logged in
+      if (user) {
+        try {
+          const profileRes = await api.get("/api/profile");
+          const profile = profileRes.data || {};
+          setUserProfile(profile);
+          const bookings = profile.bookings || [];
+          const joined = bookings
+            .filter((b) => b.hikeId)
+            .map((b) => b.hikeId);
+          setJoinedIds(joined);
+        } catch (profileErr) {
+          // If profile fails, user might not be authenticated
+          console.warn("Failed to load profile:", profileErr);
+          setJoinedIds([]);
+          setUserProfile(null);
+        }
+      } else {
+        // User is not logged in, clear joined IDs
+        setJoinedIds([]);
+        setUserProfile(null);
+      }
     } catch (e) {
       console.error("Failed to load explore data", e);
       setErr(e?.response?.data?.error || e.message || "Failed to load hikes");
@@ -39,7 +65,7 @@ export default function Explore() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [user]);
 
   const joinedSet = useMemo(() => new Set(joinedIds), [joinedIds]);
   const now = new Date();
@@ -72,12 +98,23 @@ export default function Explore() {
   }, [hikes, filter, joinedSet, now]);
 
   async function handleJoin(hikeId) {
+    // If user is not logged in, trigger login modal via custom event
+    if (!user) {
+      window.dispatchEvent(new CustomEvent('openAuthModal', { detail: { tab: 'login' } }));
+      return;
+    }
+
     try {
       await api.post(`/api/hikes/${hikeId}/join`);
       await load(); // refresh counts + joined state
     } catch (e) {
       console.error("Join failed", e);
-      alert(e?.response?.data?.error || "Failed to join hike");
+      // If unauthorized, trigger login modal
+      if (e?.response?.status === 401) {
+        window.dispatchEvent(new CustomEvent('openAuthModal', { detail: { tab: 'login' } }));
+      } else {
+        alert(e?.response?.data?.error || "Failed to join hike");
+      }
     }
   }
 
@@ -147,6 +184,12 @@ export default function Explore() {
             h.isFull || (capacity > 0 && participantsCount >= capacity);
           const isJoined = joinedSet.has(h.id);
 
+          // Check if current user is the creator of this hike
+          const isCreator = userProfile && (
+            (userProfile.role === 'guide' && userProfile.createdHikes?.some(createdHike => createdHike.id === h.id)) ||
+            (h.guideId && userProfile.guide?.id === h.guideId)
+          );
+
           // Decide button behavior based on tab, join status, date, and capacity
           let buttonLabel = "";
           let buttonDisabled = true;
@@ -155,6 +198,10 @@ export default function Explore() {
           if (filter === "past" || isPast) {
             // Past: no join / no leave
             buttonLabel = "Past";
+            buttonDisabled = true;
+          } else if (isCreator) {
+            // User created this hike, they cannot join it
+            buttonLabel = "Your Hike";
             buttonDisabled = true;
           } else if (filter === "upcoming") {
             if (isJoined) {

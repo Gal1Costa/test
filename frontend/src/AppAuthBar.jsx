@@ -1,11 +1,6 @@
 // frontend/src/AppAuthBar.jsx
 import React, { useEffect, useState } from "react";
-import {
-  auth,
-  googleProvider,
-  signInWithPopup,
-  onAuthStateChanged,
-} from "./firebase";
+import { auth, onAuthStateChanged } from "./firebase";
 
 export default function AppAuthBar() {
   const [user, setUser] = useState(auth.currentUser);
@@ -16,15 +11,6 @@ export default function AppAuthBar() {
     });
     return () => unsub();
   }, []);
-
-  async function handleSignIn() {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err) {
-      console.error("Sign-in failed:", err);
-      alert(err.message || "Sign-in failed");
-    }
-  }
 
   async function handleSignOut() {
     try {
@@ -48,14 +34,25 @@ export default function AppAuthBar() {
         <span style={{ fontSize: 13 }}>
           {user.displayName || user.email || "Signed in"}
         </span>
-        <button onClick={handleSignOut}>Sign out</button>
+        <button 
+          onClick={handleSignOut}
+          style={{ 
+            background: '#dc2626', 
+            color: '#fff', 
+            border: 'none', 
+            padding: '5px 10px', 
+            borderRadius: 6, 
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            fontSize: 13,
+  
+          }}
+        >
+          Sign out
+        </button>
       </div>
     );
   }
 
-  return (
-    <div style={{ marginLeft: "auto" }}>
-      <button onClick={handleSignIn}>Sign in with Google</button>
-    </div>
-  );
+  return null;
 }

@@ -34,6 +34,7 @@ async function authMiddleware(req, res, next) {
       if (data) {
         req.user = {
           id: data.uid,
+          firebaseUid: data.uid,
           email: data.email || null,
           role: data.role || 'hiker',
         };
