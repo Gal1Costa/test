@@ -1,0 +1,72 @@
+.explore-page {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.explore-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.explore-header h2 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.explore-header p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Filter pills */
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border-radius: 24px;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+  border-color: #999;
+}
+
+.filter-btn.active {
+  background: #333;
+  color: #fff;
+  border-color: #333;
+}
+
+/* GRID that holds HikeCard components */
+.hikes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+/* Empty state for Explore page */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: #666;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 16px;
+}

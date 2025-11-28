@@ -3,8 +3,10 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Explore from "./pages/Explore";
-import Profile from "./pages/Profile";
+import HikerProfile from "./pages/HikerProfile";
+import GuideProfile from "./pages/GuideProfile";
 import HikeDetails from "./pages/HikeDetails";
+import CreateHike from "./pages/CreateHike";
 import ErrorBoundary from "./ErrorBoundary";
 import Header from "./components/Header";
 import AuthModal from "./components/AuthModal.jsx";
@@ -50,9 +52,11 @@ function App() {
 
             {/* main pages */}
             <Route path="/explore" element={<Explore />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile" element={<Navigate to="/profile/hiker" replace />} />
+            <Route path="/profile/hiker" element={<HikerProfile />} />
+            <Route path="/profile/guide" element={<GuideProfile />} />
             <Route path="/hikes/:id" element={<HikeDetails />} />
-            <Route path="/hikes/create" element={<div style={{ padding: 40, textAlign: 'center' }}><h2>Create Hike</h2><p>Coming soon...</p></div>} />
+            <Route path="/hikes/create" element={<CreateHike />} />
 
             {/* catch-all → back to explore */}
             <Route path="*" element={<Navigate to="/explore" replace />} />

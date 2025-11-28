@@ -67,7 +67,7 @@ export default function Header({ onOpenAuthModal }) {
           <>
             <Link to="/hikes/create">Create Hike</Link>
             <Link to="/my-bookings">My Bookings</Link>
-            <Link to="/profile">My Hikes</Link>
+            <Link to="/profile/guide">My Hikes</Link>
           </>
         )}
 
@@ -104,7 +104,7 @@ export default function Header({ onOpenAuthModal }) {
         {/* LOGGED IN */}
         {user && (
           <>
-            <Link to="/profile" className="profile-icon-link">
+            <Link to={isGuide ? "/profile/guide" : "/profile/hiker"} className="profile-icon-link">
               {user.photoURL ? (
                 <img src={user.photoURL} alt="profile" className="profile-avatar" />
               ) : (
