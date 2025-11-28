@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
+import api from '../api';
 import './HikeCard.css';
 
 export default function HikeCard({
@@ -11,6 +12,7 @@ export default function HikeCard({
   allowJoin = true,
   allowLeave = true,
   userProfile = null,
+  fromProfile = false,
 }) {
   const navigate = useNavigate();
   const user = auth.currentUser;
@@ -78,14 +80,17 @@ export default function HikeCard({
       window.dispatchEvent(new CustomEvent('openAuthModal', { detail: { tab: 'login' } }));
       return;
     }
-    navigate(`/hikes/${hike.id}`);
+    navigate(`/hikes/${hike.id}`, { state: { fromProfile: !!fromProfile } });
   }
 
   return (
     <div className="hike-card">
       <div className="hike-image-container" onClick={handleView}>
         {hike.imageUrl ? (
-          <img src={hike.imageUrl} alt={hike.title || hike.name} className="hike-image" />
+          (() => {
+            const src = hike.imageUrl && hike.imageUrl.startsWith('/') ? `${api.defaults.baseURL}${hike.imageUrl}` : hike.imageUrl;
+            return <img src={src} alt={hike.title || hike.name} className="hike-image" />;
+          })()
         ) : (
           <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #e0e0e0 0%, #f0f0f0 100%)' }} />
         )}

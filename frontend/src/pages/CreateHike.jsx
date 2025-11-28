@@ -37,6 +37,8 @@ export default function CreateHike() {
       fd.append('distance', trail.distance || '');
       fd.append('duration', trail.duration || '');
       fd.append('elevationGain', trail.elevationGain || '');
+      fd.append('price', basic.price || '');
+      fd.append('meetingTime', basic.meetingTime || '');
       fd.append('description', trail.description || '');
 
       if (route.gpxFile) fd.append('gpx', route.gpxFile);
@@ -44,7 +46,7 @@ export default function CreateHike() {
 
       const res = await api.post('/api/hikes', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       const created = res?.data;
-      navigate('/profile');
+      navigate('/');
     } catch (e) {
       console.error('Create hike failed', e);
       setErr(e?.response?.data?.error || e.message || 'Failed to create hike');

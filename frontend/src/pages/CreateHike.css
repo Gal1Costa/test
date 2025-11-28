@@ -21,8 +21,8 @@
   gap: 12px;
 }
 
-label { display: block; font-size: 13px; color: #333; }
-input[type="text"], input[type="date"], input[type="number"], select, textarea {
+label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #333; }
+input[type="text"], input[type="date"], input[type="time"], input[type="number"], select, textarea {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid #e5e7eb;
@@ -30,6 +30,8 @@ input[type="text"], input[type="date"], input[type="number"], select, textarea {
   margin-top: 6px;
   box-sizing: border-box;
 }
+
+.grid-row { align-items: end; }
 
 textarea { resize: vertical; }
 

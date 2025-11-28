@@ -23,6 +23,9 @@ function mapHike(hike) {
     // keep all original fields in case something else uses them
     ...hike,
 
+    // image URL alias used by frontend components
+    imageUrl: hike.coverUrl || null,
+
     // fields the UI expects:
     id: hike.id,
     name: hike.title || hike.name || 'Untitled hike',

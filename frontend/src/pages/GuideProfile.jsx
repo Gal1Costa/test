@@ -50,49 +50,21 @@ export default function GuideProfile() {
       let hikes = [];
 
       // For guides: show both created hikes AND joined hikes (bookings)
-      const createdHikes = (profile.createdHikes || []).map((h) => {
-        const date = h.date || h.startDate || h.createdAt;
-        const participantsCount = h.participantsCount ?? h._count?.bookings ?? 0;
-        const capacity = h.capacity ?? 0;
-
-        return {
-          id: h.id,
-          name: h.title || h.name || "Untitled hike",
-          location: h.location || "Unknown location",
-          date,
-          difficulty: h.difficulty || "n/a",
-          participantsCount,
-          capacity,
-          isFull: capacity > 0 && participantsCount >= capacity,
-          isCreated: true,
-        };
-      });
+      const createdHikes = (profile.createdHikes || []).map((h) => ({
+        ...h,
+        imageUrl: h.coverUrl || h.imageUrl || null,
+        isCreated: true,
+      }));
 
       // Get joined hikes (bookings) 
       const createdHikeIds = new Set(createdHikes.map(h => h.id));
       const bookings = (profile.bookings || [])
         .filter((b) => b.hike && !createdHikeIds.has(b.hike.id))
-        .map((b) => {
-          const h = b.hike;
-          const date = h.date || h.startDate || h.createdAt;
-          const participantsCount =
-            h.participantsCount ??
-            (h._count?.bookings ?? 0) ??
-            0;
-          const capacity = h.capacity ?? 0;
-
-          return {
-            id: h.id,
-            name: h.title || h.name || "Untitled hike",
-            location: h.location || "Unknown location",
-            date,
-            difficulty: h.difficulty || "n/a",
-            participantsCount,
-            capacity,
-            isFull: capacity > 0 && participantsCount >= capacity,
-            isCreated: false,
-          };
-        });
+        .map((b) => ({
+          ...b.hike,
+          imageUrl: b.hike.coverUrl || b.hike.imageUrl || null,
+          isCreated: false,
+        }));
 
       // Combine both lists
       hikes = [...createdHikes, ...bookings];
@@ -267,6 +239,7 @@ export default function GuideProfile() {
                   allowJoin={false}
                   allowLeave={false}
                   userProfile={me}
+                  fromProfile={true}
                 />
               ))}
             </div>
@@ -295,6 +268,7 @@ export default function GuideProfile() {
                       allowJoin={false}
                       allowLeave={true}
                       userProfile={me}
+                      fromProfile={true}
                     />
                   ))}
                 </div>
@@ -337,6 +311,7 @@ export default function GuideProfile() {
                     allowJoin={false}
                     allowLeave={false}
                     userProfile={me}
+                    fromProfile={true}
                   />
                 ))}
               </div>
@@ -356,6 +331,7 @@ export default function GuideProfile() {
                     allowJoin={false}
                     allowLeave={false}
                     userProfile={me}
+                    fromProfile={true}
                   />
                 ))}
               </div>

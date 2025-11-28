@@ -73,6 +73,12 @@ function createApp() {
     payments, // For processing payments
   };
 
+  // Serve uploads directory (local fallback storage)
+  const fs = require('fs');
+  const uploadsDir = path.join(__dirname, '../../uploads');
+  try { if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true }); } catch (e) { /* ignore */ }
+  app.use('/uploads', express.static(uploadsDir));
+
   // Check if user is logged in on every request
   app.use(authMiddleware);
 

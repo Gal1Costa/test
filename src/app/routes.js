@@ -20,6 +20,11 @@ try {
 
 /* ------------------- HIKES ------------------- */
 
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
+
 // GET /api/hikes
 router.get('/api/hikes', async (_req, res, next) => {
   try {
@@ -39,20 +44,221 @@ router.get('/api/hikes/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// POST /api/hikes
-router.post('/api/hikes', async (req, res, next) => {
+// POST /api/hikes (supports multipart: cover image and optional gpx file)
+router.post('/api/hikes', upload.fields([{ name: 'cover' }, { name: 'gpx' }]), async (req, res, next) => {
   try {
     if (!hikesRepo?.createHike) return res.status(501).json({ error: 'createHike not implemented' });
-    const created = await hikesRepo.createHike(req.body);
+
+    // Build data object from form fields
+    const body = req.body || {};
+    const data = {
+      title: body.name || body.title || 'Untitled hike',
+      description: body.description || null,
+      difficulty: body.difficulty || null,
+      distance: body.distance || null,
+      duration: body.duration || null,
+      price: body.price ? parseInt(body.price, 10) : null,
+      capacity: body.capacity ? parseInt(body.capacity, 10) : null,
+      date: body.date ? new Date(body.date) : null,
+      meetingTime: body.meetingTime || null,
+      location: body.location || null,
+    };
+
+    // Handle files: cover and gpx
+    const adapters = req.app?.locals?.adapters || {};
+    const storageAdapter = adapters.firebaseStorage;
+
+    // Helper to save buffer locally
+    function saveLocal(folder, filename, buffer) {
+      const uploadsRoot = path.join(__dirname, '../../uploads');
+      const destDir = path.join(uploadsRoot, folder);
+      if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+      const destPath = path.join(destDir, filename);
+      fs.writeFileSync(destPath, buffer);
+      // return web-accessible path
+      return `/uploads/${folder}/${filename}`;
+    }
+
+    if (req.files) {
+      // cover
+      const coverArr = req.files['cover'];
+      if (coverArr && coverArr.length > 0) {
+        const f = coverArr[0];
+        const key = `covers/${Date.now()}-${f.originalname}`;
+        let uploaded = null;
+        try {
+          if (storageAdapter?.uploadObject) {
+            uploaded = await storageAdapter.uploadObject(key, f.buffer, f.mimetype);
+          }
+        } catch (e) {
+          console.warn('Storage adapter upload failed, falling back to local save', e.message || e);
+        }
+        if (uploaded && uploaded.url) {
+          data.coverUrl = uploaded.url;
+        } else {
+          // local fallback
+          const fname = `${Date.now()}-${f.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+          data.coverUrl = saveLocal('covers', fname, f.buffer);
+        }
+      }
+
+      // gpx
+      const gpxArr = req.files['gpx'];
+      if (gpxArr && gpxArr.length > 0) {
+        const g = gpxArr[0];
+        const key = `gpx/${Date.now()}-${g.originalname}`;
+        let uploadedG = null;
+        try {
+          if (storageAdapter?.uploadObject) {
+            uploadedG = await storageAdapter.uploadObject(key, g.buffer, g.mimetype);
+          }
+        } catch (e) {
+          console.warn('Storage adapter upload failed, falling back to local save', e.message || e);
+        }
+        if (uploadedG && uploadedG.url) {
+          data.gpxPath = uploadedG.url;
+        } else {
+          const fname = `${Date.now()}-${g.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+          data.gpxPath = saveLocal('gpx', fname, g.buffer);
+        }
+      }
+    }
+    // Attach guideId from authenticated user (require guide profile)
+    try {
+      const firebaseUid = req.user?.firebaseUid || req.user?.id || null;
+      if (!firebaseUid) {
+        return res.status(401).json({ error: 'You must be authenticated to create a hike' });
+      }
+
+      if (!usersRepo || !usersRepo.getCurrentUserProfile) {
+        console.warn('[routes] usersRepo.getCurrentUserProfile not available; cannot resolve guide');
+        return res.status(500).json({ error: 'User repository not available' });
+      }
+
+      // getCurrentUserProfile will create the user record if needed and include guide when role=guide
+      const profile = await usersRepo.getCurrentUserProfile(firebaseUid, req.user ? { email: req.user.email, name: req.user.name, role: req.user.role } : null);
+      if (!profile) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Require that the user has a guide profile
+      if (!profile.guide || !profile.guide.id) {
+        return res.status(400).json({ error: 'You must have a guide profile to create hikes' });
+      }
+
+      data.guideId = profile.guide.id;
+    } catch (e) {
+      console.error('[routes] Error resolving guide for current user:', e);
+      return res.status(500).json({ error: 'Unable to resolve guide for current user' });
+    }
+
+    const created = await hikesRepo.createHike(data);
     res.status(201).json(created);
   } catch (err) { next(err); }
 });
 
-// PUT /api/hikes/:id
-router.put('/api/hikes/:id', async (req, res, next) => {
+// PUT /api/hikes/:id (supports multipart: cover image and optional gpx file)
+router.put('/api/hikes/:id', upload.fields([{ name: 'cover' }, { name: 'gpx' }]), async (req, res, next) => {
   try {
     if (!hikesRepo?.updateHike) return res.status(501).json({ error: 'updateHike not implemented' });
-    const updated = await hikesRepo.updateHike(req.params.id, req.body);
+    
+    // Build data object from form fields
+    const body = req.body || {};
+    const data = {};
+    
+    // Only include fields that were provided
+    if (body.title) data.title = body.title;
+    if (body.description !== undefined) data.description = body.description || null;
+    if (body.difficulty) data.difficulty = body.difficulty;
+    if (body.distance) data.distance = body.distance;
+    if (body.duration) data.duration = body.duration;
+    if (body.price !== undefined) data.price = body.price ? parseInt(body.price, 10) : null;
+    if (body.capacity !== undefined) data.capacity = body.capacity ? parseInt(body.capacity, 10) : null;
+    if (body.date) data.date = new Date(body.date);
+    if (body.meetingTime !== undefined) data.meetingTime = body.meetingTime || null;
+    if (body.location) data.location = body.location;
+
+    // Handle files: cover and gpx (same logic as POST)
+    const adapters = req.app?.locals?.adapters || {};
+    const storageAdapter = adapters.firebaseStorage;
+
+    // Helper to save buffer locally
+    function saveLocal(folder, filename, buffer) {
+      const uploadsRoot = path.join(__dirname, '../../uploads');
+      const destDir = path.join(uploadsRoot, folder);
+      if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+      const destPath = path.join(destDir, filename);
+      fs.writeFileSync(destPath, buffer);
+      return `/uploads/${folder}/${filename}`;
+    }
+
+    if (req.files) {
+      // cover
+      const coverArr = req.files['cover'];
+      if (coverArr && coverArr.length > 0) {
+        const f = coverArr[0];
+        const key = `covers/${Date.now()}-${f.originalname}`;
+        let uploaded = null;
+        try {
+          if (storageAdapter?.uploadObject) {
+            uploaded = await storageAdapter.uploadObject(key, f.buffer, f.mimetype);
+          }
+        } catch (e) {
+          console.warn('Storage adapter upload failed, falling back to local save', e.message || e);
+        }
+        if (uploaded && uploaded.url) {
+          data.coverUrl = uploaded.url;
+        } else {
+          const fname = `${Date.now()}-${f.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+          data.coverUrl = saveLocal('covers', fname, f.buffer);
+        }
+      }
+
+      // gpx
+      const gpxArr = req.files['gpx'];
+      if (gpxArr && gpxArr.length > 0) {
+        const g = gpxArr[0];
+        const key = `gpx/${Date.now()}-${g.originalname}`;
+        let uploadedG = null;
+        try {
+          if (storageAdapter?.uploadObject) {
+            uploadedG = await storageAdapter.uploadObject(key, g.buffer, g.mimetype);
+          }
+        } catch (e) {
+          console.warn('Storage adapter upload failed, falling back to local save', e.message || e);
+        }
+        if (uploadedG && uploadedG.url) {
+          data.gpxPath = uploadedG.url;
+        } else {
+          const fname = `${Date.now()}-${g.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+          data.gpxPath = saveLocal('gpx', fname, g.buffer);
+        }
+      }
+    }
+
+    // Verify the user owns this hike before allowing update
+    const firebaseUid = req.user?.firebaseUid || req.user?.id || null;
+    if (!firebaseUid) {
+      return res.status(401).json({ error: 'You must be authenticated to update a hike' });
+    }
+
+    if (!usersRepo || !usersRepo.getCurrentUserProfile) {
+      console.warn('[routes] usersRepo.getCurrentUserProfile not available; cannot verify ownership');
+      return res.status(500).json({ error: 'User repository not available' });
+    }
+
+    const profile = await usersRepo.getCurrentUserProfile(firebaseUid, req.user ? { email: req.user.email, name: req.user.name, role: req.user.role } : null);
+    if (!profile || !profile.guide) {
+      return res.status(403).json({ error: 'Only guides can edit hikes' });
+    }
+
+    // Check if the hike belongs to this guide
+    const hike = await hikesRepo.getHikeById(req.params.id);
+    if (!hike || hike.guideId !== profile.guide.id) {
+      return res.status(403).json({ error: 'You can only edit your own hikes' });
+    }
+
+    const updated = await hikesRepo.updateHike(req.params.id, data);
     res.json(updated);
   } catch (err) { next(err); }
 });

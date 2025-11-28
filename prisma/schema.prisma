@@ -1,3 +1,9 @@
+enum DifficultyLevel {
+  EASY
+  MODERATE
+  HARD
+}
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -62,16 +68,21 @@ model Hike {
   id          String    @id @default(uuid())
   title       String
   description String?
-  difficulty  String?
+  difficulty  DifficultyLevel   // "easy", "moderate", "hard"
+  distance    String?   // e.g., "8.5 km"
+  duration    String?   // e.g., "4-5 hours"
   price       Int?
-  createdAt   DateTime  @default(now())
-  guideId     String?
   capacity    Int?
-  date        DateTime?
   location    String?
-  startDate   DateTime?
+  date        DateTime?
+  meetingTime String?  // e.g., "08:30" local meeting time
+  coverUrl    String?   // URL to cover image or storage key
+  gpxPath     String?   // path/key for uploaded GPX route
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  guideId     String    // required: hike must be created by a guide
   bookings    Booking[]
-  guide       Guide?    @relation(fields: [guideId], references: [id])
+  guide       Guide     @relation(fields: [guideId], references: [id], onDelete: Cascade)
 }
 
 model Booking {
@@ -80,7 +91,7 @@ model Booking {
   hikeId    String
   status    String
   createdAt DateTime @default(now())
-  hike      Hike     @relation(fields: [hikeId], references: [id])
+  hike      Hike     @relation(fields: [hikeId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id])
 }
 

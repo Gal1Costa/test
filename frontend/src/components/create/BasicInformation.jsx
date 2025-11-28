@@ -35,12 +35,24 @@ export default function BasicInformation({ value, onChange }) {
           Difficulty Level *
           <select value={value.difficulty || ''} onChange={update('difficulty')}>
             <option value="">Select difficulty</option>
-            <option value="easy">Easy</option>
-            <option value="moderate">Moderate</option>
-            <option value="hard">Hard</option>
+            <option value="EASY">Easy</option>
+            <option value="MODERATE">Moderate</option>
+            <option value="HARD">Hard</option>
           </select>
         </label>
       </div>
+
+          <div className="grid-row">
+            <label>
+              Meeting Time
+              <input type="time" value={value.meetingTime || ''} onChange={update('meetingTime')} />
+            </label>
+
+            <label>
+              Price (USD)
+              <input type="number" min="0" value={value.price || ''} onChange={update('price')} placeholder="e.g., 20" />
+            </label>
+          </div>
     </div>
   );
 }

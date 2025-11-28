@@ -314,9 +314,6 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }) {
 					</button>
 				</form>
 
-				<div style={{ marginTop: 8, fontSize: 12, color: '#666', textAlign: 'center' }}>
-					Demo mode: No actual account created in demo.
-				</div>
 			</div>
 		</div>
 	);

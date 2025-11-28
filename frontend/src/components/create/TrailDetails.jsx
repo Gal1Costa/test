@@ -16,16 +16,11 @@ export default function TrailDetails({ value, onChange }) {
           Duration
           <input type="text" value={value.duration || ''} onChange={update('duration')} placeholder="e.g., 4-5 hours" />
         </label>
-
-        <label>
-          Elevation Gain
-          <input type="text" value={value.elevationGain || ''} onChange={update('elevationGain')} placeholder="e.g., 650m" />
-        </label>
       </div>
 
       <div style={{ marginTop: 12 }}>
         <label>
-          Description *
+          Description
           <textarea value={value.description || ''} onChange={update('description')} placeholder="Describe the hike, what participants can expect, and any special features..." rows={6} />
         </label>
       </div>

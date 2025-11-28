@@ -51,27 +51,11 @@ export default function HikerProfile() {
       const bookings = profile.bookings || [];
       const hikes = bookings
         .filter((b) => b.hike)
-        .map((b) => {
-          const h = b.hike;
-          const date = h.date || h.startDate || h.createdAt;
-          const participantsCount =
-            h.participantsCount ??
-            (h._count?.bookings ?? 0) ??
-            0;
-          const capacity = h.capacity ?? 0;
-
-          return {
-            id: h.id,
-            name: h.title || h.name || "Untitled hike",
-            location: h.location || "Unknown location",
-            date,
-            difficulty: h.difficulty || "n/a",
-            participantsCount,
-            capacity,
-            isFull: capacity > 0 && participantsCount >= capacity,
-            isCreated: false,
-          };
-        });
+        .map((b) => ({
+          ...b.hike,
+          imageUrl: b.hike.coverUrl || b.hike.imageUrl || null,
+          isCreated: false,
+        }));
 
       const upcomingHikes = hikes.filter((h) => {
         if (!h.date) return false;
@@ -226,6 +210,7 @@ export default function HikerProfile() {
                   allowJoin={false}
                   allowLeave={true}
                   userProfile={me}
+                  fromProfile={true}
                 />
               ))}
             </div>
@@ -249,6 +234,7 @@ export default function HikerProfile() {
                   allowJoin={false}
                   allowLeave={false}
                   userProfile={me}
+                  fromProfile={true}
                 />
               ))}
             </div>
