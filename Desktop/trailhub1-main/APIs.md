@@ -81,112 +81,48 @@ Authorization: Bearer <firebase-id-token>
 
 ## Deployment Strategy
 
-### Current Deployment (Development)
+### Current Deployment
+- **Environment**: Local development (`npm run dev`)
+- **Database**: PostgreSQL (local or cloud via `DATABASE_URL`)
+- **Auth**: Firebase Authentication (token verification on each request)
+- **Storage**: Firebase Storage (adapter in `src/adapters/firebase.storage.js`)
+- **Config**: Environment variables (`.env` file)
+- **Port**: 3000 (configurable via `PORT` env var)
 
-**Environment**: Local development only  
-**Stack**: Node.js (npm scripts) + PostgreSQL + Firebase (stubbed)
-
+**Setup**:
 ```bash
-# Start backend
+# Install dependencies
+npm install
+
+# Create .env file with:
+# DATABASE_URL=postgres://user:pass@localhost:5432/trailhub
+# FIREBASE_PROJECT_ID=...
+# FIREBASE_CLIENT_EMAIL=...
+# FIREBASE_PRIVATE_KEY=...
+# FIREBASE_STORAGE_BUCKET=...
+
+# Run migrations
+npx prisma migrate dev
+
+# Start server
 npm run dev
-
-# Start frontend
-cd frontend && npm run dev
-
-# Database setup
-npx prisma migrate deploy
-npx prisma db seed
 ```
 
-**Key Configuration**:
-- `NODE_ENV=development`
-- `DATABASE_URL=postgres://user:pass@localhost:5432/trailhub`
-- Dev auth via `x-dev-user` header (no Firebase required)
-- Local file uploads to `/uploads`
-- CORS: `http://localhost:5173` (frontend dev server)
+### Future Deployment (Planned - Simple)
+- **Option A (Easiest)**: Deploy to **Vercel** or **Railway** (1-click from GitHub)
+  - Push to main branch → auto-deploys
+  - Database: Use Vercel Postgres or Neon (free tier available)
+  - No Docker or config needed
+  
+- **Option B (More Control)**: Deploy to **Heroku** or **Render**
+  - Add `Procfile` with `web: npm run start`
+  - Push to main → deploys automatically
+  - Database: Managed PostgreSQL included
+
+- **Option C (DIY)**: Self-host on **Linux VPS** (DigitalOcean, Linode, etc.)
+  - Install Node.js + PostgreSQL
+  - Clone repo → `npm install` → `npm run start`
+  - Use PM2 or systemd for process management
 
 ---
 
-### Future Deployment (Production)
-
-**Recommended Stack**:
-
-| Component | Service | Alternative |
-|-----------|---------|-------------|
-| **Backend** | Railway / Render | Heroku, AWS EC2, Railway |
-| **Frontend** | Vercel / Netlify | AWS S3 + CloudFront, Netlify |
-| **Database** | PostgreSQL (managed) | AWS RDS, Heroku Postgres, Railway Postgres |
-| **File Storage** | Firebase Storage | AWS S3, Google Cloud Storage |
-| **Secrets** | Environment variables | AWS Secrets Manager, Railway config |
-| **Monitoring** | Sentry / DataDog | CloudWatch, Datadog, New Relic |
-| **CI/CD** | GitHub Actions | GitLab CI, Travis CI |
-
-**Deployment Checklist**:
-- [ ] Set `NODE_ENV=production`
-- [ ] Use managed PostgreSQL (RDS / Heroku / Railway)
-- [ ] Implement Firebase Storage adapter (currently stubbed)
-- [ ] Configure CORS for production domain only
-- [ ] Set up environment secrets (no hardcoded keys)
-- [ ] Run migrations before deploying: `npx prisma migrate deploy`
-- [ ] Set up monitoring & error tracking (Sentry)
-- [ ] Enable HTTPS (automatic on Vercel, Railway, Render)
-- [ ] Test file upload limits and fallback
-- [ ] Implement review & admin endpoints before launch
-
-**Environment Variables (Production)**:
-```bash
-NODE_ENV=production
-PORT=3000
-DATABASE_URL=postgres://<user>:<pass>@<host>:<port>/<db>
-FIREBASE_PROJECT_ID=<prod-project-id>
-FIREBASE_PRIVATE_KEY=<key>
-FIREBASE_CLIENT_EMAIL=<email>
-CORS_ORIGIN=https://trailhub.com
-```
-
-**Deployment Commands**:
-```bash
-# Build backend (if needed)
-npm ci                          # Clean install
-
-# Migrate database
-npx prisma migrate deploy
-
-# Start backend
-npm start                       # Runs on port 3000
-
-# Frontend (Vercel/Netlify automatic)
-cd frontend && npm run build
-```
-
----
-
-## Testing
-
-```bash
-# Quick test
-./test_api.sh health
-
-# Full test suite
-./test_api.sh all
-
-# Individual scenarios
-./test_api.sh scenario1  # Register → List → Join
-./test_api.sh scenario2  # Create → Update → Delete
-./test_api.sh scenario3  # Privacy filtering
-```
-
-**Postman**: Import `postman_collection.json`
-
----
-
-## Status Legend
-
-- ✅ Fully Functional
-- ⚠️ Stub (not implemented)
-- 🔐 Requires Authentication
-- 👤 Role-based access
-
----
-
-**Last Updated**: November 30, 2025
