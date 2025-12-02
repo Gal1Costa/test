@@ -13,6 +13,7 @@ export default function Explore() {
   const [err, setErr] = useState("");
   const [user, setUser] = useState(auth.currentUser);
   const [userProfile, setUserProfile] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
 
   // Listen for auth state changes
   useEffect(() => {
@@ -22,6 +23,8 @@ export default function Explore() {
       if (!u) {
         setJoinedIds([]);
       }
+      // Mark that Firebase has finished initialising auth state
+      setAuthReady(true);
     });
     return () => unsub();
   }, []);
@@ -38,7 +41,7 @@ export default function Explore() {
       // Only get profile/bookings if user is logged in
       if (user) {
         try {
-          const profileRes = await api.get("/api/profile");
+          const profileRes = await api.get("/api/me");
           const profile = profileRes.data || {};
           setUserProfile(profile);
           const bookings = profile.bookings || [];
@@ -66,8 +69,10 @@ export default function Explore() {
   }
 
   useEffect(() => {
+    if (!authReady) return;
     load();
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authReady, user]);
 
   const navigate = useNavigate();
 

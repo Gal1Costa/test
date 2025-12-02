@@ -15,6 +15,7 @@ export default function HikeDetails() {
   const [err, setErr] = useState("");
   const [user, setUser] = useState(auth.currentUser);
   const [userProfile, setUserProfile] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editErr, setEditErr] = useState(null);
   const [editFields, setEditFields] = useState({});
@@ -32,6 +33,7 @@ export default function HikeDetails() {
       if (!u) {
         setJoinedIds([]);
       }
+      setAuthReady(true);
     });
     return () => unsub();
   }, []);
@@ -44,10 +46,10 @@ export default function HikeDetails() {
       const hikeRes = await api.get(`/api/hikes/${id}`);
       setHike(hikeRes.data || null);
 
-      // Only load profile/bookings if user is logged in
-      if (user) {
+  // Only load profile/bookings if user is logged in and auth is ready
+  if (authReady && user) {
         try {
-          const profileRes = await api.get("/api/profile");
+          const profileRes = await api.get("/api/me");
           const profile = profileRes.data;
           setUserProfile(profile);
           const bookings = profile?.bookings || [];
@@ -75,8 +77,10 @@ export default function HikeDetails() {
   }
 
   useEffect(() => {
+    if (!authReady) return;
     load();
-  }, [id, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authReady, id, user]);
 
   const joinedSet = useMemo(() => new Set(joinedIds), [joinedIds]);
 

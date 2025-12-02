@@ -17,6 +17,7 @@ export default function GuideProfile() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [completedView, setCompletedView] = useState('created');
   const tabInitializedRef = useRef(false);
+  const [authReady, setAuthReady] = useState(false);
 
   // Check auth and redirect if not guide
   useEffect(() => {
@@ -32,7 +33,7 @@ export default function GuideProfile() {
     setLoading(true);
     setErr("");
     try {
-      const res = await api.get("/api/profile", {
+  const res = await api.get("/api/me", {
         params: { _t: Date.now() }
       });
       const profile = res.data;
@@ -92,7 +93,14 @@ export default function GuideProfile() {
   }
 
   useEffect(() => {
-    load();
+    // wait for Firebase auth initialization before loading profile
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setAuthReady(true);
+      // only call load if user exists (we expect a guide)
+      if (u) load();
+    });
+    return () => unsub();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const counts = useMemo(

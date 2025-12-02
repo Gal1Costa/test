@@ -110,6 +110,39 @@ async function getUserByFirebaseUid(firebaseUid) {
   return user;
 }
 
+// Get public user data by user ID, include profiles and basic stats
+async function getUserById(userId) {
+  if (!userId) return null;
+
+  // Fetch user and include role-specific profiles
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      hikerProfile: true,
+      guide: true,
+    },
+  });
+
+  if (!user) return null;
+
+  // If guide, fetch created hikes with participant counts
+  let createdHikes = [];
+  if (user.role === 'guide' && user.guide) {
+    createdHikes = await prisma.hike.findMany({
+      where: { guideId: user.guide.id },
+      orderBy: { createdAt: 'desc' },
+      include: { _count: { select: { bookings: true } } },
+    });
+  }
+
+  return {
+    ...user,
+    ...(user.role === 'guide' && {
+      createdHikes: createdHikes.map(h => ({ ...h, participantsCount: h._count?.bookings ?? 0 })),
+    }),
+  };
+}
+
 // Return "profile" data: user + their bookings + hikes
 async function getCurrentUserProfile(firebaseUid, userInfo = null) {
   let user;
@@ -320,6 +353,7 @@ module.exports = {
   getOrCreateDemoUser,
   getCurrentUserProfile,
   createOrUpdateUser,
+  getUserById,
   getUserByFirebaseUid,
   updateHikerProfile,
   updateGuideProfile,

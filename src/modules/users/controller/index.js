@@ -6,6 +6,19 @@ const usersRepo = require('../repository');
 
 const router = Router();
 
+// GET /api/users/me - return current user's profile (allows visitor access)
+router.get('/me', async (req, res, next) => {
+  try {
+    const firebaseUid = req.user?.firebaseUid || req.user?.id || null;
+    const userInfo = req.user ? { email: req.user.email, name: req.user.name, role: req.user.role } : null;
+    const profile = await usersRepo.getCurrentUserProfile(firebaseUid, userInfo);
+    return res.json(profile);
+  } catch (err) {
+    console.error('[users/me] Error fetching profile:', err);
+    next(err);
+  }
+});
+
 // POST /api/users/register - Register a new user after Firebase signup
 // Note: This endpoint does NOT require authentication (public endpoint for new signups)
 router.post('/register', async (req, res, next) => {
@@ -105,9 +118,42 @@ router.patch('/profile', requireRole(['hiker', 'guide', 'admin']), async (req, r
 });
 
 // Get a specific user's profile - need to be logged in (hiker, guide, or admin)
-router.get('/:id', requireRole(['hiker','guide','admin']), (req, res) => {
-  const { id } = req.params;
-  res.status(200).json({ id, email: null, role: 'hiker' }); // TODO: fetch from repository
+router.get('/:id', requireRole(['hiker','guide','admin']), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const requester = req.user || null; // from auth middleware
+
+    const user = await usersRepo.getUserById(id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const isAdmin = requester && requester.role === 'admin';
+    const isOwner = requester && requester.firebaseUid && requester.firebaseUid === user.firebaseUid;
+
+    if (isAdmin || isOwner) {
+      return res.json(user);
+    }
+
+    // Public view (hide sensitive fields like email)
+    const publicView = {
+      id: user.id,
+      name: user.name || null,
+      role: user.role,
+      hikerProfile: user.hikerProfile ? {
+        displayName: user.hikerProfile.displayName || null,
+        bio: user.hikerProfile.bio || null,
+      } : undefined,
+      guide: user.guide ? {
+        displayName: user.guide.displayName || null,
+        bio: user.guide.bio || null,
+        createdHikesCount: Array.isArray(user.createdHikes) ? user.createdHikes.length : undefined,
+      } : undefined,
+    };
+
+    return res.json(publicView);
+  } catch (err) {
+    console.error('[users/:id] Error fetching user by id:', err);
+    next(err);
+  }
 });
 
 module.exports = router;

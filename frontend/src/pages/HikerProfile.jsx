@@ -16,6 +16,7 @@ export default function HikerProfile() {
   const [activeTab, setActiveTab] = useState("joined");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const tabInitializedRef = useRef(false);
+  const [authReady, setAuthReady] = useState(false);
 
   // Check auth and redirect if not hiker
   useEffect(() => {
@@ -23,6 +24,7 @@ export default function HikerProfile() {
       if (!u) {
         navigate("/explore");
       }
+      setAuthReady(true);
     });
     return () => unsub();
   }, [navigate]);
@@ -31,7 +33,7 @@ export default function HikerProfile() {
     setLoading(true);
     setErr("");
     try {
-      const res = await api.get("/api/profile", {
+  const res = await api.get("/api/me", {
         params: { _t: Date.now() }
       });
       const profile = res.data;
@@ -80,8 +82,10 @@ export default function HikerProfile() {
   }
 
   useEffect(() => {
+    if (!authReady) return;
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authReady]);
 
   const counts = useMemo(
     () => ({
