@@ -1,4 +1,3 @@
-// frontend/src/firebase.js
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
@@ -11,7 +10,7 @@ import {
   EmailAuthProvider,
 } from "firebase/auth";
 
-// Your web app's Firebase configuration (from Firebase Console)
+// Web app's Firebase configuration (from Firebase Console)
 const firebaseConfig = {
   apiKey: "AIzaSyAeHOfUDSuWxWLgLy8KNzXiN0y-NR98dbU",
   authDomain: "trailhub-82d1c.firebaseapp.com",

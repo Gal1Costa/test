@@ -19,7 +19,6 @@ api.interceptors.request.use(
       const token = await user.getIdToken(/* forceRefresh */ true);
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // Removed dev fallback - should not use x-dev-user when user is logged in
 
     return config;
   },

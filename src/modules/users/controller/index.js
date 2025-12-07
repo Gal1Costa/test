@@ -3,6 +3,7 @@
 const { Router } = require('express');
 const { requireRole } = require('../../../app/roles.middleware');
 const usersRepo = require('../repository');
+const { prisma } = require('../../../shared/prisma');
 
 const router = Router();
 
@@ -126,30 +127,35 @@ router.get('/:id', requireRole(['hiker','guide','admin']), async (req, res, next
     const user = await usersRepo.getUserById(id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
+    // Fetch bookings for this user so viewers can see joined hikes
+    let bookings = [];
+    try {
+      bookings = await prisma.booking.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: 'desc' },
+        include: { hike: true },
+      });
+    } catch (bErr) {
+      console.warn('[users/:id] Failed to load bookings for user', user.id, bErr.message || bErr);
+      bookings = [];
+    }
+
+    // Build profile object that includes public information and bookings
+    const profile = {
+      ...user,
+      bookings,
+    };
+
     const isAdmin = requester && requester.role === 'admin';
     const isOwner = requester && requester.firebaseUid && requester.firebaseUid === user.firebaseUid;
 
-    if (isAdmin || isOwner) {
-      return res.json(user);
+    // Hide sensitive fields for non-owners (e.g. email, firebaseUid)
+    if (!isAdmin && !isOwner) {
+      const { email, firebaseUid, ...publicProfile } = profile;
+      return res.json(publicProfile);
     }
 
-    // Public view (hide sensitive fields like email)
-    const publicView = {
-      id: user.id,
-      name: user.name || null,
-      role: user.role,
-      hikerProfile: user.hikerProfile ? {
-        displayName: user.hikerProfile.displayName || null,
-        bio: user.hikerProfile.bio || null,
-      } : undefined,
-      guide: user.guide ? {
-        displayName: user.guide.displayName || null,
-        bio: user.guide.bio || null,
-        createdHikesCount: Array.isArray(user.createdHikes) ? user.createdHikes.length : undefined,
-      } : undefined,
-    };
-
-    return res.json(publicView);
+    return res.json(profile);
   } catch (err) {
     console.error('[users/:id] Error fetching user by id:', err);
     next(err);

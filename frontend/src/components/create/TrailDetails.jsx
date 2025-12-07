@@ -18,6 +18,13 @@ export default function TrailDetails({ value, onChange }) {
         </label>
       </div>
 
+      <div className="grid-row" style={{ marginTop: 12 }}>
+        <label>
+          Elevation Gain
+          <input type="text" value={value.elevationGain || ''} onChange={update('elevationGain')} placeholder="e.g., 1200 m" />
+        </label>
+      </div>
+
       <div style={{ marginTop: 12 }}>
         <label>
           Description

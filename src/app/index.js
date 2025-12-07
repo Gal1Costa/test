@@ -74,10 +74,11 @@ function createApp() {
   };
 
   // Serve uploads directory (local fallback storage)
+  // Serve hikes module uploads (covers, gpx, etc.)
   const fs = require('fs');
-  const uploadsDir = path.join(__dirname, '../../uploads');
-  try { if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true }); } catch (e) { /* ignore */ }
-  app.use('/uploads', express.static(uploadsDir));
+  const hikesUploadsDir = path.join(__dirname, '../modules/hikes/uploads');
+  try { if (!fs.existsSync(hikesUploadsDir)) fs.mkdirSync(hikesUploadsDir, { recursive: true }); } catch (e) { /* ignore */ }
+  app.use('/hikes', express.static(hikesUploadsDir));
 
   // Check if user is logged in on every request
   app.use(authMiddleware);

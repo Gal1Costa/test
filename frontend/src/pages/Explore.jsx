@@ -71,7 +71,6 @@ export default function Explore() {
   useEffect(() => {
     if (!authReady) return;
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authReady, user]);
 
   const navigate = useNavigate();

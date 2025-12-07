@@ -5,6 +5,7 @@ import Header from '../components/Header';
 import BasicInformation from '../components/create/BasicInformation';
 import TrailDetails from '../components/create/TrailDetails';
 import MapRoute from '../components/create/MapRoute';
+import WhatToBring from '../components/create/WhatToBring';
 import CoverImage from '../components/create/CoverImage';
 import './CreateHike.css';
 
@@ -20,8 +21,8 @@ export default function CreateHike() {
   async function handleCreate() {
     setErr(null);
     // simple validation
-    if (!basic.name || !basic.date || !basic.location) {
-      setErr('Please fill required fields (Name, Date, Location).');
+    if (!basic.name || !basic.date || !basic.meetingPlace) {
+      setErr('Please fill required fields (Name, Date, Meeting Place).');
       return;
     }
 
@@ -40,6 +41,8 @@ export default function CreateHike() {
       fd.append('price', basic.price || '');
       fd.append('meetingTime', basic.meetingTime || '');
       fd.append('description', trail.description || '');
+      fd.append('meetingPlace', basic.meetingPlace || '');
+      fd.append('whatToBring', (basic.whatToBring || '').toString());
 
       if (route.gpxFile) fd.append('gpx', route.gpxFile);
       if (cover.coverFile) fd.append('cover', cover.coverFile);
@@ -58,14 +61,15 @@ export default function CreateHike() {
   return (
     <div className="create-hike-page">
       <div style={{ maxWidth: 1100, center: 'auto', padding: 16 }}>
-        <h1 style={{ marginBottom: 3 }}>Create New Hike</h1>
-        <p style={{ marginTop: 0, marginBottom: 20, color: '#666' }}>Share your favorite trail with the community</p>
+        <h1 style={{ marginBottom: 20 }}>Create New Hike</h1>
+        
 
         {err && <div className="alert-error">{err}</div>}
 
         <BasicInformation value={basic} onChange={setBasic} />
         <TrailDetails value={trail} onChange={setTrail} />
         <MapRoute value={route} onChange={setRoute} />
+        <WhatToBring value={basic} onChange={setBasic} />
         <CoverImage value={cover} onChange={setCover} />
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 20 }}>

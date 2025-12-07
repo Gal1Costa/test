@@ -45,10 +45,13 @@ router.post('/', upload.fields([{ name: 'cover' }, { name: 'gpx' }]), async (req
       difficulty: body.difficulty || null,
       distance: body.distance || null,
       duration: body.duration || null,
+      elevationGain: body.elevationGain || null,
       price: body.price ? parseInt(body.price, 10) : null,
       capacity: body.capacity ? parseInt(body.capacity, 10) : null,
       date: body.date ? new Date(body.date) : null,
       meetingTime: body.meetingTime || null,
+      meetingPlace: body.meetingPlace || null,
+      whatToBring: body.whatToBring || null,
       location: body.location || null,
     };
 
@@ -94,11 +97,14 @@ router.put('/:id', upload.fields([{ name: 'cover' }, { name: 'gpx' }]), async (r
     if (body.description !== undefined) data.description = body.description || null;
     if (body.difficulty) data.difficulty = body.difficulty;
     if (body.distance) data.distance = body.distance;
+    if (body.elevationGain !== undefined) data.elevationGain = body.elevationGain || null;
     if (body.duration) data.duration = body.duration;
     if (body.price !== undefined) data.price = body.price ? parseInt(body.price, 10) : null;
     if (body.capacity !== undefined) data.capacity = body.capacity ? parseInt(body.capacity, 10) : null;
     if (body.date) data.date = new Date(body.date);
     if (body.meetingTime !== undefined) data.meetingTime = body.meetingTime || null;
+    if (body.meetingPlace !== undefined) data.meetingPlace = body.meetingPlace || null;
+    if (body.whatToBring !== undefined) data.whatToBring = body.whatToBring || null;
     if (body.location) data.location = body.location;
 
     // Handle file uploads

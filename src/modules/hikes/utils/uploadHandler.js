@@ -8,20 +8,20 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Save a file buffer to local filesystem.
+ * Save a file buffer to local filesystem within the hikes module.
  * Creates directories as needed. Returns a web-accessible path.
- * @param {string} folder - Subdirectory under /uploads (e.g., 'covers', 'gpx')
+ * @param {string} folder - Subdirectory under hikes module uploads (e.g., 'covers', 'gpx')
  * @param {string} filename - Target filename
  * @param {Buffer} buffer - File contents
- * @returns {string} Web-accessible path (e.g., '/uploads/covers/1234-file.jpg')
+ * @returns {string} Web-accessible path (e.g., '/hikes/covers/1234-file.jpg')
  */
 function saveLocal(folder, filename, buffer) {
-  const uploadsRoot = path.join(__dirname, '../../uploads');
+  const uploadsRoot = path.join(__dirname, '../uploads');
   const destDir = path.join(uploadsRoot, folder);
   if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
   const destPath = path.join(destDir, filename);
   fs.writeFileSync(destPath, buffer);
-  return `/uploads/${folder}/${filename}`;
+  return `/hikes/${folder}/${filename}`;
 }
 
 /**

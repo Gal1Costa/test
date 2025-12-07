@@ -69,6 +69,7 @@ async function getHikeById(id) {
     include: {
       guide: { include: { user: true } },
       _count: { select: { bookings: true } },
+      bookings: { include: { user: { include: { hikerProfile: true, guide: true } } } },
     },
   });
 
@@ -77,6 +78,13 @@ async function getHikeById(id) {
   return mapHike({
     ...h,
     participantsCount: h._count?.bookings ?? 0,
+    participants: (h.bookings || []).map(b => ({
+      id: b.user?.id,
+      name: b.user?.name || b.user?.email || 'Participant',
+      photoUrl: b.user?.hikerProfile?.photoUrl || null,
+      role: b.user?.role || null,
+      guideId: b.user?.guide?.id || null,
+    })),
   });
 }
 

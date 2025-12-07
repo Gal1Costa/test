@@ -20,19 +20,24 @@ router.get('/:id', requireRole(['visitor','hiker','guide','admin']), async (req,
       return res.status(404).json({ error: 'Guide not found' });
     }
 
-    // Get guide's hikes
+    // Get guide's created hikes (include all fields needed by frontend)
     const hikes = await prisma.hike.findMany({
       where: { guideId: id },
       orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        title: true,
-        difficulty: true,
-        price: true,
-        location: true,
-        coverUrl: true,
+      include: {
         _count: { select: { bookings: true } },
       },
+    });
+
+    // Get guide's bookings (joined hikes) - exclude hikes they created
+    const createdHikeIds = new Set(hikes.map(h => h.id));
+    const bookings = await prisma.booking.findMany({
+      where: {
+        userId: guide.userId,
+        hikeId: { notIn: Array.from(createdHikeIds) },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: { hike: true },
     });
 
     // Get guide's reviews and calculate rating
@@ -53,6 +58,11 @@ router.get('/:id', requireRole(['visitor','hiker','guide','admin']), async (req,
         ...h,
         participantsCount: h._count?.bookings ?? 0,
       })),
+      createdHikes: hikes.map(h => ({
+        ...h,
+        participantsCount: h._count?.bookings ?? 0,
+      })),
+      bookings: bookings, // Include joined hikes (bookings)
     };
 
     res.status(200).json(guideResponse);

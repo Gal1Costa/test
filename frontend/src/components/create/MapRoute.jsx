@@ -18,7 +18,7 @@ export default function MapRoute({ value, onChange }) {
 
       <div style={{ marginTop: 12 }}>
         <label className="file-drop">
-          Upload GPX Route (Optional)
+          Upload GPX Route
           <input type="file" accept=".gpx" onChange={handleGpx} />
         </label>
         {value.gpxFile && <div style={{ marginTop: 8 }}>Selected: {value.gpxFile.name}</div>}

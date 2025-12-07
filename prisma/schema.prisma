@@ -76,6 +76,9 @@ model Hike {
   location    String?
   date        DateTime?
   meetingTime String?  // e.g., "08:30" local meeting time
+  meetingPlace String? // street or meetup point
+  elevationGain String? // e.g., "1,200 m"
+  whatToBring String? // newline-separated items
   coverUrl    String?   // URL to cover image or storage key
   gpxPath     String?   // path/key for uploaded GPX route
   createdAt   DateTime  @default(now())

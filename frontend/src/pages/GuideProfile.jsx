@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { auth, onAuthStateChanged } from "../firebase";
 import api from "../api";
 import EditProfileModal from "../components/EditProfileModal";
@@ -8,6 +8,7 @@ import "./Profile.css";
 
 export default function GuideProfile() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [me, setMe] = useState(null);
   const [upcoming, setUpcoming] = useState([]);
   const [past, setPast] = useState([]);
@@ -15,6 +16,7 @@ export default function GuideProfile() {
   const [err, setErr] = useState("");
   const [activeTab, setActiveTab] = useState("created");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPublicView, setIsPublicView] = useState(false);
   const [completedView, setCompletedView] = useState('created');
   const tabInitializedRef = useRef(false);
   const [authReady, setAuthReady] = useState(false);
@@ -22,9 +24,7 @@ export default function GuideProfile() {
   // Check auth and redirect if not guide
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
-      if (!u) {
-        navigate("/explore");
-      }
+      setAuthReady(true);
     });
     return () => unsub();
   }, [navigate]);
@@ -33,13 +33,134 @@ export default function GuideProfile() {
     setLoading(true);
     setErr("");
     try {
-  const res = await api.get("/api/me", {
-        params: { _t: Date.now() }
-      });
-      const profile = res.data;
-      
-      // Redirect non-guides to HikerProfile page
-      if (profile.role !== 'guide') {
+      const params = new URLSearchParams(location.search);
+      const qsUserId = params.get('user');
+      const stateGuideId = location.state?.guideId;
+      // Clear previous profile to avoid showing stale data while loading
+      setMe(null);
+      console.debug('[GuideProfile] load() called, location.state:', location.state, 'qsUserId:', qsUserId, 'resolved guideId:', stateGuideId);
+
+      // Get current user profile to check if they're viewing their own profile
+      let currentUserProfile = null;
+      try {
+        const currentUserRes = await api.get("/api/me");
+        currentUserProfile = currentUserRes.data;
+      } catch (e) {
+        // User not logged in, that's okay
+        console.debug('[GuideProfile] Could not get current user:', e.message);
+      }
+
+      let profile;
+      if (stateGuideId) {
+        // Public view via guide id passed in state
+        const res = await api.get(`/api/guides/${String(stateGuideId)}`);
+        const g = res.data;
+        // Normalize guide response into the shape this component expects
+        profile = {
+          id: g.user?.id || g.id,
+          email: g.user?.email,
+          name: g.user?.name || g.name,
+          role: 'guide',
+          guide: {
+            ...g,
+            id: g.id || (g.user && g.user.guide && g.user.guide.id) || null,
+          },
+          createdHikes: g.hikes || g.createdHikes || [],
+          bookings: g.bookings || [],
+        };
+        
+        // Check if current user is the owner of this guide profile
+        const isOwner = currentUserProfile && (
+          currentUserProfile.id === profile.id ||
+          (currentUserProfile.role === 'guide' && currentUserProfile.guide?.id && String(currentUserProfile.guide.id) === String(stateGuideId)) ||
+          (currentUserProfile.role === 'guide' && currentUserProfile.guide?.id && profile.guide?.id && String(currentUserProfile.guide.id) === String(profile.guide.id))
+        );
+        setIsPublicView(!isOwner);
+      } else if (qsUserId) {
+        // Viewing a user by userId (querystring). If that user is a guide, fetch the richer guide endpoint.
+        const res = await api.get(`/api/users/${String(qsUserId)}`);
+        const tmp = res.data;
+        if (tmp && tmp.role === 'guide' && tmp.guide && tmp.guide.id) {
+          try {
+            const guideRes = await api.get(`/api/guides/${String(tmp.guide.id)}`);
+            const g = guideRes.data;
+            profile = {
+              id: g.user?.id || g.id,
+              email: g.user?.email,
+              name: g.user?.name || g.name,
+              role: 'guide',
+              guide: {
+                ...g,
+                id: g.id || (g.user && g.user.guide && g.user.guide.id) || null,
+              },
+              createdHikes: g.hikes || g.createdHikes || [],
+              bookings: g.bookings || [],
+            };
+          } catch (e) {
+            profile = tmp;
+          }
+        } else {
+          profile = tmp;
+        }
+        
+        // Check if current user is the owner of this profile
+        const isOwner = currentUserProfile && (
+          currentUserProfile.id === profile.id ||
+          (currentUserProfile.role === 'guide' && currentUserProfile.guide?.id && profile.guide?.id && String(currentUserProfile.guide.id) === String(profile.guide.id))
+        );
+        setIsPublicView(!isOwner);
+      } else {
+        // No guide id passed — load current user and, if they are a guide, fetch the canonical guide data
+        const res = await api.get("/api/me", { params: { _t: Date.now() } });
+        const meProfile = res.data;
+        if (meProfile.role === 'guide') {
+          // If guide record is present, use it; otherwise try to fetch user record which may include guide relation
+          let guideIdCandidate = meProfile.guide?.id || null;
+          if (!guideIdCandidate) {
+            try {
+              const userRes = await api.get(`/api/users/${String(meProfile.id)}`);
+              const userObj = userRes.data;
+              guideIdCandidate = userObj.guide?.id || null;
+            } catch (e) {
+              // ignore and fallback
+            }
+          }
+
+          if (guideIdCandidate) {
+            try {
+              const guideRes = await api.get(`/api/guides/${String(guideIdCandidate)}`);
+              const g = guideRes.data;
+              profile = {
+                id: g.user?.id || g.id,
+                email: g.user?.email,
+                name: g.user?.name || g.name,
+                role: 'guide',
+                guide: {
+                  ...g,
+                  id: g.id || (g.user && g.user.guide && g.user.guide.id) || null,
+                },
+                createdHikes: g.hikes || g.createdHikes || [],
+                bookings: g.bookings || [],
+              };
+              setIsPublicView(false);
+            } catch (innerErr) {
+              // If fetching guide endpoint fails, fall back to /api/me response
+              profile = meProfile;
+              setIsPublicView(false);
+            }
+          } else {
+            // No guide record found, use meProfile as-is
+            profile = meProfile;
+            setIsPublicView(false);
+          }
+        } else {
+          profile = meProfile;
+          setIsPublicView(false);
+        }
+      }
+
+      // Redirect non-guides only when viewing own profile
+      if (!stateGuideId && !qsUserId && profile.role !== 'guide') {
         navigate("/profile/hiker");
         return;
       }
@@ -96,12 +217,17 @@ export default function GuideProfile() {
     // wait for Firebase auth initialization before loading profile
     const unsub = onAuthStateChanged(auth, (u) => {
       setAuthReady(true);
-      // only call load if user exists (we expect a guide)
-      if (u) load();
     });
     return () => unsub();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Ensure we reload when auth is ready or when location state/search changes
+  useEffect(() => {
+    if (!authReady) return;
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authReady, location.key, location.search, location.state?.guideId]);
 
   const counts = useMemo(
     () => {
@@ -158,12 +284,14 @@ export default function GuideProfile() {
         </div>
         <div className="profile-info">
           <div className="profile-header-actions">
-            <button 
-              className="btn-edit-profile"
-              onClick={() => setIsEditModalOpen(true)}
-            >
-              Edit Profile
-            </button>
+            {!isPublicView && (
+              <button 
+                className="btn-edit-profile"
+                onClick={() => setIsEditModalOpen(true)}
+              >
+                Edit Profile
+              </button>
+            )}
           </div>
           <h1 className="profile-name">{me.name || me.email || "User"}</h1>
           <p className="profile-role">Guide</p>
@@ -230,59 +358,81 @@ export default function GuideProfile() {
       {activeTab === 'created' ? (
         <div className="hikes-section">
           <h2 className="section-title">Upcoming Created Hikes</h2>
-          {upcoming.filter(h => h.isCreated).length === 0 ? (
-            <div className="empty-state">
-              <p>You haven't created any upcoming hikes yet. Create your first hike to get started!</p>
-              <Link to="/hikes/create" className="btn-explore-hikes">
-                Create Hike
-              </Link>
-            </div>
-          ) : (
-            <div className="hikes-list">
-              {upcoming.filter(h => h.isCreated).map((h) => (
-                <HikeCard
-                  key={h.id}
-                  hike={h}
-                  isJoined={false}
-                  allowJoin={false}
-                  allowLeave={false}
-                  userProfile={me}
-                  fromProfile={true}
-                />
-              ))}
-            </div>
-          )}
+          {(() => {
+            const createdUpcoming = upcoming.filter(h => h.isCreated);
+            if (createdUpcoming.length === 0) {
+              return (
+                <div className="empty-state">
+                  {isPublicView ? (
+                    <p>No upcoming created hikes.</p>
+                  ) : (
+                    <>
+                      <p>You haven't created any upcoming hikes yet. Create your first hike to get started!</p>
+                      <Link to="/hikes/create" className="btn-explore-hikes">
+                        Create Hike
+                      </Link>
+                    </>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <div className="hikes-list">
+                {createdUpcoming.map((h) => (
+                  <HikeCard
+                    key={h.id}
+                    hike={h}
+                    isJoined={false}
+                    allowJoin={false}
+                    allowLeave={false}
+                    userProfile={me}
+                    fromProfile={true}
+                  />
+                ))}
+              </div>
+            );
+          })()}
         </div>
       ) : activeTab === 'joined' ? (
         <div className="hikes-section">
           <h2 className="section-title">Upcoming Joined Hikes</h2>
-          {upcoming.filter(h => !h.isCreated).length === 0 ? (
-            <div className="empty-state">
-              <p>You haven't joined any hikes yet. Browse available hikes to get started!</p>
-              <Link to="/explore" className="btn-explore-hikes">
-                Explore Hikes
-              </Link>
-            </div>
-          ) : (
-            <>
-              {upcoming.filter(h => !h.isCreated).length > 0 && (
-                <div className="hikes-list">
-                  {upcoming.filter(h => !h.isCreated).map((h) => (
-                    <HikeCard
-                      key={h.id}
-                      hike={h}
-                      isJoined={true}
-                      onLeave={(id) => handleLeave(id)}
-                      allowJoin={false}
-                      allowLeave={true}
-                      userProfile={me}
-                      fromProfile={true}
-                    />
-                  ))}
+          {(() => {
+            const joinedUpcoming = upcoming.filter(h => !h.isCreated);
+            if (joinedUpcoming.length === 0) {
+              return (
+                <div className="empty-state">
+                  {isPublicView ? (
+                    <p>No upcoming joined hikes.</p>
+                  ) : (
+                    <>
+                      <p>You haven't joined any hikes yet. Browse available hikes to get started!</p>
+                      <Link to="/explore" className="btn-explore-hikes">
+                        Explore Hikes
+                      </Link>
+                    </>
+                  )}
                 </div>
-              )}
-            </>
-          )}
+              );
+            }
+
+            return (
+              <div className="hikes-list">
+                {joinedUpcoming.map((h) => (
+                  <HikeCard
+                    key={h.id}
+                    hike={h}
+                    isJoined={true}
+                    onLeave={(id) => handleLeave(id)}
+                    allowJoin={false}
+                    allowLeave={true}
+                    userProfile={me}
+                    fromProfile={true}
+                  />
+                ))}
+              </div>
+            );
+          })()}
         </div>
       ) : activeTab === 'completed' ? (
         <div className="hikes-section">

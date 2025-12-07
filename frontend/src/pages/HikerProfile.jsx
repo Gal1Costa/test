@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { auth, onAuthStateChanged } from "../firebase";
 import api from "../api";
 import EditProfileModal from "../components/EditProfileModal";
@@ -8,6 +8,7 @@ import "./Profile.css";
 
 export default function HikerProfile() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [me, setMe] = useState(null);
   const [upcoming, setUpcoming] = useState([]);
   const [past, setPast] = useState([]);
@@ -15,15 +16,13 @@ export default function HikerProfile() {
   const [err, setErr] = useState("");
   const [activeTab, setActiveTab] = useState("joined");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPublicView, setIsPublicView] = useState(false);
   const tabInitializedRef = useRef(false);
   const [authReady, setAuthReady] = useState(false);
 
   // Check auth and redirect if not hiker
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
-      if (!u) {
-        navigate("/explore");
-      }
       setAuthReady(true);
     });
     return () => unsub();
@@ -33,13 +32,34 @@ export default function HikerProfile() {
     setLoading(true);
     setErr("");
     try {
-  const res = await api.get("/api/me", {
-        params: { _t: Date.now() }
-      });
-      const profile = res.data;
+      const params = new URLSearchParams(location.search);
+      const qsUserId = params.get('user');
+      const stateUserId = location.state?.userId;
+      const userId = stateUserId || qsUserId;
+      // Clear previous profile to avoid showing stale data while loading
+      setMe(null);
+
+      let profile;
+      console.debug('[HikerProfile] load() called, location.state:', location.state, 'qsUserId:', qsUserId, 'resolved userId:', userId);
+      if (userId) {
+        // public view of another user (from state or querystring)
+        const res = await api.get(`/api/users/${String(userId)}`);
+        profile = res.data;
+        setIsPublicView(true);
+        // If the user we're viewing is a guide, forward to the guide profile route
+        if (profile && profile.role === 'guide') {
+          const guideId = profile.guide?.id || null;
+          navigate('/profile/guide', { state: { guideId, guideName: profile.name } });
+          return;
+        }
+      } else {
+        const res = await api.get("/api/me", { params: { _t: Date.now() } });
+        profile = res.data;
+        setIsPublicView(false);
+      }
       
-      // Redirect guides to GuideProfile page
-      if (profile.role === 'guide') {
+      // If viewing another user's profile, do not redirect based on role
+      if (!userId && profile.role === 'guide') {
         navigate("/profile/guide");
         return;
       }
@@ -84,8 +104,9 @@ export default function HikerProfile() {
   useEffect(() => {
     if (!authReady) return;
     load();
+    // Re-run when location/state changes (so navigating with state reloads the correct profile)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authReady]);
+  }, [authReady, location.key, location.search, location.state?.userId]);
 
   const counts = useMemo(
     () => ({
@@ -135,12 +156,14 @@ export default function HikerProfile() {
         </div>
         <div className="profile-info">
           <div className="profile-header-actions">
-            <button 
-              className="btn-edit-profile"
-              onClick={() => setIsEditModalOpen(true)}
-            >
-              Edit Profile
-            </button>
+            {!isPublicView && (
+              <button 
+                className="btn-edit-profile"
+                onClick={() => setIsEditModalOpen(true)}
+              >
+                Edit Profile
+              </button>
+            )}
           </div>
           <h1 className="profile-name">{me.name || me.email || "User"}</h1>
           <p className="profile-role">Hiker</p>

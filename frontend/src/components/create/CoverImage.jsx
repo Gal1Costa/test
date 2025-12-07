@@ -10,12 +10,16 @@ export default function CoverImage({ value, onChange }) {
       return;
     }
     const url = URL.createObjectURL(value.coverFile);
+    console.log('[CoverImage] Preview URL created:', url);
     setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [value.coverFile]);
 
   const handleFile = (e) => {
     const f = e.target.files?.[0] || null;
+    if (f) {
+      console.log('[CoverImage] File selected:', f.name, f.size, f.type);
+    }
     onChange({ ...value, coverFile: f });
   };
 

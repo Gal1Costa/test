@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { auth, onAuthStateChanged } from "../firebase";
 import api from "../api";
 
@@ -8,7 +8,6 @@ export default function HikeDetails() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // All useState hooks MUST be at the top, before any conditional logic
   const [hike, setHike] = useState(null);
   const [joinedIds, setJoinedIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -180,7 +179,7 @@ export default function HikeDetails() {
   }
 
   async function handleEdit() {
-    if (!editFields.title && !editFields.description && !editFields.capacity && !editFields.price && !editFields.difficulty && !editFields.distance && !editFields.duration && !editFields.meetingTime && !editFields.location && !editFields.date && !editCoverFile && !editGpxFile) {
+    if (!editFields.title && !editFields.description && !editFields.capacity && !editFields.price && !editFields.difficulty && !editFields.distance && !editFields.duration && !editFields.meetingTime && !editFields.location && !editFields.date && !editFields.meetingPlace && !editFields.elevationGain && !editFields.whatToBring && !editCoverFile && !editGpxFile) {
       setEditErr('No changes to save');
       return;
     }
@@ -201,6 +200,9 @@ export default function HikeDetails() {
       if (editFields.meetingTime !== undefined) fd.append('meetingTime', editFields.meetingTime);
       if (editFields.location) fd.append('location', editFields.location);
       if (editFields.date) fd.append('date', editFields.date);
+      if (editFields.meetingPlace !== undefined) fd.append('meetingPlace', editFields.meetingPlace);
+      if (editFields.elevationGain !== undefined) fd.append('elevationGain', editFields.elevationGain);
+      if (editFields.whatToBring !== undefined) fd.append('whatToBring', editFields.whatToBring);
       
       // Add files
       if (editCoverFile) fd.append('cover', editCoverFile);
@@ -221,76 +223,214 @@ export default function HikeDetails() {
   }
 
   return (
-    <div style={{ padding: 16 }}>
-      <div style={{ marginBottom: 12 }}>
-        <Link to={backLink} style={{ fontSize: 13 }}>
-          ← {backLabel}
-        </Link>
-      </div>
+    <div>
+      {/* Image full-width at top, no margins */}
+      {hike.imageUrl && (
+        <div style={{ position: 'relative', marginLeft: -20, marginRight: -20, marginTop: -20 }}>
+          <img src={hike.imageUrl.startsWith('/') ? `${api.defaults.baseURL}${hike.imageUrl}` : hike.imageUrl} alt={hike.title || hike.name} style={{ width: '100%', height: 320, objectFit: 'cover', display: 'block' }} />
+          <button onClick={() => navigate(backLink)} aria-label="Back" style={{ position: 'absolute', left: 12, top: 12, background: '#fff', border: '1px solid rgba(0,0,0,0.06)', padding: 8, borderRadius: 8, cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}>
+            ←
+          </button>
+        </div>
+      )}
 
-      <h2>{hike.name || hike.title || "Untitled hike"}</h2>
-          {hike.imageUrl && (
-            <div style={{ margin: '12px 0' }}>
-              <img src={hike.imageUrl.startsWith('/') ? `${api.defaults.baseURL}${hike.imageUrl}` : hike.imageUrl} alt={hike.title || hike.name} style={{ width: '100%', height: 320, objectFit: 'cover', borderRadius: 8 }} />
+      {/* Content container with padding */}
+      <div style={{ padding: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start' }}>
+          {/* Left (main) column */}
+          <div>
+            {/* Title below image */}
+            <h2 style={{ marginTop: 8 }}>{hike.name || hike.title || "Untitled hike"}</h2>
+
+            {/* Basic Information Section */}
+            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'row', gap: 24, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 18 }}>📍</span>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{hike.location || 'Not specified'}</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 18 }}>👥</span>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>
+                    {participantsCount}{capacity ? ` / ${capacity}` : ''} {isFull ? '(Full)' : ''}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 18 }}>💰</span>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{hike.price ? `$${hike.price}` : 'Free'}</div>
+                </div>
+              </div>
             </div>
+
+
+          <hr style={{ border: 'none', borderTop: '1px solid #e6eef0', margin: '18px 0' }} />
+
+          <h3 style={{ marginTop: 0 }}>About This Hike</h3>
+          {hike.description ? (
+            <p style={{ marginTop: 8 }}>{hike.description}</p>
+          ) : (
+            <p style={{ color: '#666' }}>No description provided.</p>
           )}
 
-          <p style={{ fontSize: 14, color: "#666" }}>
-            {hike.location || "Unknown location"} · {date ? d.toLocaleDateString() : "Unknown date"} · {hike.difficulty || "n/a"}
-          </p>
+          <hr style={{ border: 'none', borderTop: '1px solid #e6eef0', margin: '18px 0' }} />
 
-      {hike.guideName && (
-        <p style={{ fontSize: 13, color: "#666" }}>
-          Guide: {hike.guideName}
-        </p>
-      )}
+          <h3 style={{ marginTop: 0 }}>Trail Map & Route</h3>
+          <div style={{ marginTop: 8, border: '1px dashed #e6eef0', borderRadius: 8, padding: 24, minHeight: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
+            {hike.gpxPath ? (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 24 }}>🗺️</div>
+                <div style={{ marginTop: 8, color: '#666' }}>{hike.distance ? `${hike.distance} · ${hike.duration || ''}` : 'Interactive trail map'}</div>
+                <div style={{ marginTop: 12 }}>
+                  <a href={hike.gpxPath.startsWith('/') ? `${api.defaults.baseURL}${hike.gpxPath}` : hike.gpxPath} download style={{ color: '#2d6a4f', textDecoration: 'underline' }}>📍 Download GPX</a>
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', color: '#666' }}>
+                <div style={{ fontSize: 36 }}>📍</div>
+                <div style={{ marginTop: 8 }}>Interactive trail map</div>
+                <div style={{ marginTop: 8, color: '#999' }}>{hike.distance ? `${hike.distance} · ${hike.duration || ''}` : ''}</div>
+              </div>
+            )}
+          </div>
 
-      {hike.description && (
-        <p style={{ marginTop: 12 }}>{hike.description}</p>
-      )}
+          <hr style={{ border: 'none', borderTop: '1px solid #e6eef0', margin: '18px 0' }} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 12 }}>
-        <div style={{ fontSize: 13, color: '#444' }}><strong>Participants:</strong> {participantsCount}{capacity ? ` / ${capacity}` : ''} {isFull ? '(Full)' : ''}</div>
-        <div style={{ fontSize: 13, color: '#444' }}><strong>Distance:</strong> {hike.distance || '—'}</div>
-        <div style={{ fontSize: 13, color: '#444' }}><strong>Duration:</strong> {hike.duration || '—'}</div>
-        <div style={{ fontSize: 13, color: '#444' }}><strong>Meeting Time:</strong> {hike.meetingTime || '—'}</div>
-        <div style={{ fontSize: 13, color: '#444' }}><strong>Price:</strong> {hike.price != null ? `$${hike.price}` : 'Free'}</div>
-      </div>
+          <h3 style={{ marginTop: 0 }}>What to Bring</h3>
+          {hike.whatToBring ? (
+            (() => {
+              const items = (typeof hike.whatToBring === 'string' ? hike.whatToBring.split('\n') : Array.isArray(hike.whatToBring) ? hike.whatToBring : []).filter(Boolean);
+              if (items.length === 0) return <p style={{ color: '#666' }}>No items listed.</p>;
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                  {items.map((it, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      <div style={{ width: 10, height: 10, background: '#2d6a4f', borderRadius: 2, marginTop: 6 }} />
+                      <div style={{ fontSize: 14 }}>{it}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()
+          ) : (
+            <p style={{ color: '#666' }}>No suggestions provided.</p>
+          )}
 
-      {buttonLabel && (
-        <button
-          onClick={buttonOnClick || (() => {})}
-          disabled={buttonDisabled}
-          style={{
-            marginTop: 16,
-            background:
-              buttonLabel === "Leave"
-                ? "#fff"
-                : buttonLabel === "Join"
-                ? "#2d6a4f"
-                : "#f0f0f0",
-            border:
-              buttonLabel === "Leave"
-                ? "1px solid #d33"
-                : "1px solid #ccc",
-            color:
-              buttonLabel === "Leave"
-                ? "#d33"
-                : buttonLabel === "Join"
-                ? "#fff"
-                : "#555",
-            borderRadius: 8,
-            padding: "8px 16px",
-            cursor: buttonDisabled ? "default" : "pointer",
-            opacity: buttonDisabled ? 0.6 : 1,
-          }}
-        >
-          {buttonLabel}
-        </button>
-      )}
+          {/* Participants section after What to Bring (visible only when >=1 participant) */}
+          {hike.participants && hike.participants.length > 0 ? (
+            <div style={{ marginTop: 12 }}>
+              <h4 style={{ marginTop: 0 }}>Participants</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginTop: 8 }}>
+                {hike.participants.map((p) => (
+                  <button key={p.id} onClick={() => {
+                    // If participant is a guide, open guide profile; otherwise open hiker profile
+                    if (p.guideId) {
+                      navigate('/profile/guide', { state: { guideId: p.guideId, guideName: p.name, guidePhoto: p.photoUrl } });
+                    } else {
+                      navigate('/profile/hiker', { state: { userId: p.id, userName: p.name, userPhoto: p.photoUrl } });
+                    }
+                  }} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 8, borderRadius: 8, border: '1px solid #eee', background: '#fff', cursor: 'pointer' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: '#e6eef0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#2d6a4f', overflow: 'hidden' }}>
+                      {p.photoUrl ? (
+                        <img src={p.photoUrl.startsWith('/') ? `${api.defaults.baseURL}${p.photoUrl}` : p.photoUrl} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <span>{(p.name || 'P').charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div style={{ textAlign: 'left' }}>{p.name}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            participantsCount > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <h4 style={{ marginTop: 0 }}>Participants</h4>
+                <div style={{ fontSize: 13, color: '#444' }}><strong>Joined:</strong> {participantsCount}{capacity ? ` / ${capacity}` : ''} {isFull ? '(Full)' : ''}</div>
+              </div>
+            )
+          )}
 
-      {/* Owner actions */}
-      {isCreator && (
+          {/* Owner actions (keeps existing edit UI below) */}
+
+          </div>
+
+          {/* Right (sidebar) column */}
+          <aside style={{ width: '100%' }}>
+            {/* Join / Unjoin container (visible to non-creators) */}
+            {!isCreator && (
+              <div style={{ marginBottom: 12, padding: 12, borderRadius: 8, background: '#fff' }}>
+                {isJoined ? (
+                  <button onClick={handleLeave} className="btn-cancel" style={{ background: '#fff', border: '1px solid #e53e3e', color: '#e53e3e', width: '100%', padding: '8px 12px', borderRadius: 8 }}>Unjoin Hike</button>
+                ) : (
+                  <button onClick={handleJoin} className="btn-primary" style={{ background: '#2d6a4f', color: '#fff', width: '100%', padding: '8px 12px', borderRadius: 8 }}>Join Hike</button>
+                )}
+              </div>
+            )}
+
+            <div style={{ background: '#fff', borderRadius: 8, padding: 16, border: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div style={{ width: 56, height: 56, borderRadius: 8, background: '#e6eef0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#2d6a4f' }}>
+                  {hike.guide?.user?.name ? hike.guide.user.name.charAt(0).toUpperCase() : (hike.guideName ? hike.guideName.charAt(0) : 'G')}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700 }}>{hike.guide?.user?.name || hike.guideName || 'Guide'}</div>
+                  <div style={{ fontSize: 13, color: '#999', marginTop: 4 }}>{hike.guide?.averageRating ? `${hike.guide.averageRating} ★` : ''} {hike.guide?.totalReviews ? `(${hike.guide.totalReviews} reviews)` : ''}</div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 12, fontSize: 13, color: '#444' }}>
+                {hike.guide?.bio || 'Professional guide. No bio provided.'}
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <button onClick={() => { const guideId = hike.guide?.id || null; navigate('/profile/guide', { state: { guideId, guideName: hike.guide?.user?.name, guidePhoto: hike.guide?.user?.photoUrl } }); }} className="btn-primary" style={{ width: '100%', background: '#fff', color: '#2d6a4f', border: '1px solid #e5e7eb' }}>
+                  View Profile
+                </button>
+              </div>
+            </div>
+
+            {/* Meeting Details Section */}
+            <div style={{ marginTop: 12, background: '#fff', borderRadius: 8, padding: 16, border: '1px solid #e5e7eb' }}>
+              <h4 style={{ marginTop: 0, marginBottom: 12, fontSize: 16 }}>Meeting Details</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Meeting Place</div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{hike.meetingPlace || 'Not specified'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Date</div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{date ? d.toLocaleDateString() : 'Not specified'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Time</div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>
+                    {hike.meetingTime ? (() => {
+                      // Format time if it's in HH:MM format
+                      const time = hike.meetingTime;
+                      if (time.includes(':')) {
+                        const [hours, minutes] = time.split(':');
+                        const hour = parseInt(hours);
+                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                        const displayHour = hour % 12 || 12;
+                        return `${displayHour}:${minutes} ${ampm}`;
+                      }
+                      return time;
+                    })() : 'Not specified'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        {/* Owner actions */}
+        {isCreator && (
         <div style={{ marginTop: 24 }}>
           {!editMode ? (
             <div style={{ display: 'flex', gap: 12 }}>
@@ -309,10 +449,14 @@ export default function HikeDetails() {
                   Title
                   <input type="text" value={editFields.title || hike.title || ''} onChange={(e) => setEditFields({ ...editFields, title: e.target.value })} placeholder="Hike title" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
                 </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  Location
-                  <input type="text" value={editFields.location || hike.location || ''} onChange={(e) => setEditFields({ ...editFields, location: e.target.value })} placeholder="Location" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
-                </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    Location
+                    <input type="text" value={editFields.location || hike.location || ''} onChange={(e) => setEditFields({ ...editFields, location: e.target.value })} placeholder="Location" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    Meeting Place
+                    <input type="text" value={editFields.meetingPlace !== undefined ? editFields.meetingPlace : (hike.meetingPlace || '')} onChange={(e) => setEditFields({ ...editFields, meetingPlace: e.target.value })} placeholder="Street / meetup spot" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
+                  </label>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
@@ -340,6 +484,10 @@ export default function HikeDetails() {
                   Duration
                   <input type="text" value={editFields.duration || hike.duration || ''} onChange={(e) => setEditFields({ ...editFields, duration: e.target.value })} placeholder="e.g., 4-5 hours" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
                 </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  Elevation Gain
+                  <input type="text" value={editFields.elevationGain !== undefined ? editFields.elevationGain : (hike.elevationGain || '')} onChange={(e) => setEditFields({ ...editFields, elevationGain: e.target.value })} placeholder="e.g., 450 m" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
+                </label>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
@@ -364,6 +512,13 @@ export default function HikeDetails() {
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   Description
                   <textarea value={editFields.description !== undefined ? editFields.description : hike.description || ''} onChange={(e) => setEditFields({ ...editFields, description: e.target.value })} placeholder="Describe the hike..." rows={4} style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6, fontFamily: 'inherit' }} />
+                </label>
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  What To Bring (one per line)
+                  <textarea value={editFields.whatToBring !== undefined ? editFields.whatToBring : (typeof hike.whatToBring === 'string' ? hike.whatToBring : Array.isArray(hike.whatToBring) ? hike.whatToBring.join('\n') : '')} onChange={(e) => setEditFields({ ...editFields, whatToBring: e.target.value })} placeholder="e.g. Water\nSnacks\nWarm jacket" rows={4} style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6, fontFamily: 'inherit' }} />
                 </label>
               </div>
 
@@ -460,6 +615,7 @@ export default function HikeDetails() {
         </div>
       )}
       {!isCreator && editErr && <div className="alert-error" style={{ marginTop: 8 }}>{editErr}</div>}
+      </div>
     </div>
   );
 }

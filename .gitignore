@@ -18,3 +18,5 @@ yarn-error.log*
 
 
 /src/generated/prisma
+
+src/modules/hikes/uploads/
