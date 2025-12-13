@@ -19,6 +19,7 @@ export default function HikerProfile() {
   const [isPublicView, setIsPublicView] = useState(false);
   const tabInitializedRef = useRef(false);
   const [authReady, setAuthReady] = useState(false);
+  const [userReviews, setUserReviews] = useState([]);
 
   // Check auth and redirect if not hiker
   useEffect(() => {
@@ -91,6 +92,17 @@ export default function HikerProfile() {
 
       setUpcoming(upcomingHikes);
       setPast(pastHikes);
+
+      // Load user's reviews to check which hikes need review
+      if (!userId) {
+        try {
+          const reviewsRes = await api.get('/api/reviews/user/me');
+          setUserReviews(reviewsRes.data || []);
+        } catch (e) {
+          console.warn('Failed to load user reviews:', e.message);
+          setUserReviews([]);
+        }
+      }
     } catch (e) {
       console.error("Failed to load profile", e);
       setErr(
@@ -116,6 +128,10 @@ export default function HikerProfile() {
     }),
     [upcoming, past]
   );
+
+  const hasReviewedHike = (hikeId) => {
+    return userReviews.some(review => review.hikeId === hikeId);
+  };
 
   async function handleLeave(hikeId) {
     try {
@@ -243,7 +259,7 @@ export default function HikerProfile() {
             </div>
           )}
         </div>
-      ) : (
+      ) : activeTab === 'completed' ? (
         <div className="hikes-section">
           <h2 className="section-title">Completed Hikes</h2>
           {past.length === 0 ? (
@@ -262,12 +278,13 @@ export default function HikerProfile() {
                   allowLeave={false}
                   userProfile={me}
                   fromProfile={true}
+                  needsReview={!hasReviewedHike(h.id)}
                 />
               ))}
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
       {/* Edit Profile Modal */}
       <EditProfileModal

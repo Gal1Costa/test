@@ -199,6 +199,14 @@
   margin: 0 0 20px 0;
 }
 
+/* Reviews Section */
+.reviews-section-container {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 .empty-state {
   text-align: center;
   padding: 60px 20px;

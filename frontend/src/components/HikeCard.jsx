@@ -13,6 +13,7 @@ export default function HikeCard({
   allowLeave = true,
   userProfile = null,
   fromProfile = false,
+  needsReview = false,
 }) {
   const navigate = useNavigate();
   const user = auth.currentUser;
@@ -95,6 +96,11 @@ export default function HikeCard({
           <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #e0e0e0 0%, #f0f0f0 100%)' }} />
         )}
         <div className={`difficulty-badge ${difficulty}`}>{difficulty}</div>
+        {needsReview && (
+          <div className="review-indicator" title="Review pending">
+            ✍️
+          </div>
+        )}
       </div>
 
       <div className="hike-content" onClick={handleView}>

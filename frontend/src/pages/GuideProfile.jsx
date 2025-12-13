@@ -4,6 +4,7 @@ import { auth, onAuthStateChanged } from "../firebase";
 import api from "../api";
 import EditProfileModal from "../components/EditProfileModal";
 import HikeCard from "../components/HikeCard";
+import ReviewList from "../components/ReviewList";
 import "./Profile.css";
 
 export default function GuideProfile() {
@@ -497,6 +498,11 @@ export default function GuideProfile() {
           )}
         </div>
       ) : null}
+
+      {/* Reviews Section */}
+      <div className="reviews-section-container" style={{ marginTop: '24px' }}>
+        <ReviewList guideId={me.guide?.id} title="Reviews for this Guide" />
+      </div>
 
       {/* Edit Profile Modal */}
       <EditProfileModal
