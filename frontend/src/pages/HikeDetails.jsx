@@ -2,6 +2,10 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { auth, onAuthStateChanged } from "../firebase";
 import api from "../api";
+<<<<<<< HEAD
+=======
+import ReviewCard from "../components/ReviewCard";
+>>>>>>> 44afc34 (Initial commit with all current changes)
 
 export default function HikeDetails() {
   const { id } = useParams();
@@ -9,6 +13,10 @@ export default function HikeDetails() {
   const location = useLocation();
 
   const [hike, setHike] = useState(null);
+<<<<<<< HEAD
+=======
+  const [hikeReviews, setHikeReviews] = useState([]);
+>>>>>>> 44afc34 (Initial commit with all current changes)
   const [joinedIds, setJoinedIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -23,6 +31,10 @@ export default function HikeDetails() {
   const [editCoverFile, setEditCoverFile] = useState(null);
   const [editGpxFile, setEditGpxFile] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
+<<<<<<< HEAD
+=======
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+>>>>>>> 44afc34 (Initial commit with all current changes)
 
   // Listen for auth state changes
   useEffect(() => {
@@ -44,6 +56,17 @@ export default function HikeDetails() {
       // Always load hike details
       const hikeRes = await api.get(`/api/hikes/${id}`);
       setHike(hikeRes.data || null);
+<<<<<<< HEAD
+=======
+      // load reviews for this hike (used to determine if user already reviewed)
+      try {
+        const revRes = await api.get(`/api/reviews/hike/${id}`);
+        setHikeReviews(revRes.data || []);
+      } catch (rErr) {
+        console.warn('Failed to load hike reviews', rErr);
+        setHikeReviews([]);
+      }
+>>>>>>> 44afc34 (Initial commit with all current changes)
 
   // Only load profile/bookings if user is logged in and auth is ready
   if (authReady && user) {
@@ -426,6 +449,24 @@ export default function HikeDetails() {
                 </div>
               </div>
             </div>
+<<<<<<< HEAD
+=======
+
+            {/* Review CTA: only show for logged-in users who joined, hike is past, and haven't reviewed */}
+            {(() => {
+              const isReviewer = userProfile && (userProfile.role === 'hiker' || userProfile.role === 'guide');
+              const hasJoined = user && joinedSet.has(hike.id);
+              const alreadyReviewed = userProfile && hikeReviews && hikeReviews.some(r => (r.userId && r.userId === userProfile.id) || (r.user && r.user.id === userProfile.id));
+              if (isReviewer && hasJoined && isPast && !alreadyReviewed) {
+                return (
+                  <div style={{ marginTop: 12 }}>
+                    <ReviewCard hikeId={hike.id} guideId={hike.guide?.id} guideName={hike.guide?.user?.name || hike.guideName} onSubmitted={() => load()} />
+                  </div>
+                );
+              }
+              return null;
+            })()}
+>>>>>>> 44afc34 (Initial commit with all current changes)
           </aside>
         </div>
 

@@ -17,6 +17,10 @@ export default function HikerProfile() {
   const [activeTab, setActiveTab] = useState("joined");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPublicView, setIsPublicView] = useState(false);
+<<<<<<< HEAD
+=======
+  const [userReviews, setUserReviews] = useState([]);
+>>>>>>> 44afc34 (Initial commit with all current changes)
   const tabInitializedRef = useRef(false);
   const [authReady, setAuthReady] = useState(false);
 
@@ -91,6 +95,22 @@ export default function HikerProfile() {
 
       setUpcoming(upcomingHikes);
       setPast(pastHikes);
+<<<<<<< HEAD
+=======
+
+      // Load user's reviews if viewing own profile
+      if (!isPublicView) {
+        try {
+          const userRevRes = await api.get('/api/reviews/user/me');
+          setUserReviews(userRevRes.data || []);
+        } catch (urErr) {
+          console.warn('Failed to load user reviews', urErr);
+          setUserReviews([]);
+        }
+      } else {
+        setUserReviews([]);
+      }
+>>>>>>> 44afc34 (Initial commit with all current changes)
     } catch (e) {
       console.error("Failed to load profile", e);
       setErr(
@@ -117,6 +137,11 @@ export default function HikerProfile() {
     [upcoming, past]
   );
 
+<<<<<<< HEAD
+=======
+  const reviewedHikeIds = useMemo(() => new Set(userReviews.map(r => r.hikeId)), [userReviews]);
+
+>>>>>>> 44afc34 (Initial commit with all current changes)
   async function handleLeave(hikeId) {
     try {
       await api.delete(`/api/hikes/${hikeId}/join`);
@@ -262,6 +287,10 @@ export default function HikerProfile() {
                   allowLeave={false}
                   userProfile={me}
                   fromProfile={true}
+<<<<<<< HEAD
+=======
+                  needsReview={!reviewedHikeIds.has(h.id)}
+>>>>>>> 44afc34 (Initial commit with all current changes)
                 />
               ))}
             </div>
