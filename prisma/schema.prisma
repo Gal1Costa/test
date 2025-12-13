@@ -85,10 +85,7 @@ model Hike {
   updatedAt   DateTime  @updatedAt
   guideId     String    // required: hike must be created by a guide
   bookings    Booking[]
-<<<<<<< HEAD
-=======
   reviews     Review[]
->>>>>>> 44afc34 (Initial commit with all current changes)
   guide       Guide     @relation(fields: [guideId], references: [id], onDelete: Cascade)
 }
 
@@ -106,18 +103,12 @@ model Review {
   id        String   @id @default(uuid())
   userId    String
   guideId   String
-<<<<<<< HEAD
-=======
   hikeId    String
   tags      String[]
->>>>>>> 44afc34 (Initial commit with all current changes)
   rating    Int
   comment   String?
   createdAt DateTime @default(now())
   guide     Guide    @relation(fields: [guideId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
-<<<<<<< HEAD
-=======
   hike      Hike     @relation(fields: [hikeId], references: [id])
->>>>>>> 44afc34 (Initial commit with all current changes)
 }
