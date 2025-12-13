@@ -14,6 +14,7 @@ export default function Explore() {
   const [user, setUser] = useState(auth.currentUser);
   const [userProfile, setUserProfile] = useState(null);
   const [authReady, setAuthReady] = useState(false);
+  const [userReviews, setUserReviews] = useState([]);
 
   // Listen for auth state changes
   useEffect(() => {
@@ -49,16 +50,22 @@ export default function Explore() {
             .filter((b) => b.hikeId)
             .map((b) => b.hikeId);
           setJoinedIds(joined);
+
+          // Load user's reviews
+          const reviewsRes = await api.get('/api/reviews/user/me');
+          setUserReviews(reviewsRes.data || []);
         } catch (profileErr) {
           // If profile fails, user might not be authenticated
           console.warn("Failed to load profile:", profileErr);
           setJoinedIds([]);
           setUserProfile(null);
+          setUserReviews([]);
         }
       } else {
         // User is not logged in, clear joined IDs
         setJoinedIds([]);
         setUserProfile(null);
+        setUserReviews([]);
       }
     } catch (e) {
       console.error("Failed to load explore data", e);
@@ -108,6 +115,10 @@ export default function Explore() {
 
   const joinedSet = useMemo(() => new Set(joinedIds), [joinedIds]);
   const now = new Date();
+
+  const hasReviewedHike = (hikeId) => {
+    return userReviews.some(review => review.hikeId === hikeId);
+  };
 
   // Apply filter rules
   const filteredHikes = useMemo(() => {
@@ -170,18 +181,27 @@ export default function Explore() {
         </div>
       ) : (
         <div className="hikes-grid">
-          {filteredHikes.map((h) => (
-            <HikeCard
-              key={h.id}
-              hike={h}
-              isJoined={joinedSet.has(h.id)}
-              onJoin={(id) => handleJoin(id)}
-              onLeave={(id) => handleLeave(id)}
-              allowJoin={filter === 'upcoming'}
-              allowLeave={true}
-              userProfile={userProfile}
-            />
-          ))}
+          {filteredHikes.map((h) => {
+            const hikeDate = h.date || h.createdAt;
+            const d = hikeDate ? new Date(hikeDate) : null;
+            const isPastHike = d && d < now;
+            const isJoinedHike = joinedSet.has(h.id);
+            const needsReview = isPastHike && isJoinedHike && !hasReviewedHike(h.id);
+
+            return (
+              <HikeCard
+                key={h.id}
+                hike={h}
+                isJoined={isJoinedHike}
+                onJoin={(id) => handleJoin(id)}
+                onLeave={(id) => handleLeave(id)}
+                allowJoin={filter === 'upcoming'}
+                allowLeave={true}
+                userProfile={userProfile}
+                needsReview={needsReview}
+              />
+            );
+          })}
         </div>
       )}
     </div>

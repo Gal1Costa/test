@@ -17,12 +17,9 @@ export default function HikerProfile() {
   const [activeTab, setActiveTab] = useState("joined");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPublicView, setIsPublicView] = useState(false);
-<<<<<<< HEAD
-=======
-  const [userReviews, setUserReviews] = useState([]);
->>>>>>> 44afc34 (Initial commit with all current changes)
   const tabInitializedRef = useRef(false);
   const [authReady, setAuthReady] = useState(false);
+  const [userReviews, setUserReviews] = useState([]);
 
   // Check auth and redirect if not hiker
   useEffect(() => {
@@ -95,22 +92,17 @@ export default function HikerProfile() {
 
       setUpcoming(upcomingHikes);
       setPast(pastHikes);
-<<<<<<< HEAD
-=======
 
-      // Load user's reviews if viewing own profile
-      if (!isPublicView) {
+      // Load user's reviews to check which hikes need review
+      if (!userId) {
         try {
-          const userRevRes = await api.get('/api/reviews/user/me');
-          setUserReviews(userRevRes.data || []);
-        } catch (urErr) {
-          console.warn('Failed to load user reviews', urErr);
+          const reviewsRes = await api.get('/api/reviews/user/me');
+          setUserReviews(reviewsRes.data || []);
+        } catch (e) {
+          console.warn('Failed to load user reviews:', e.message);
           setUserReviews([]);
         }
-      } else {
-        setUserReviews([]);
       }
->>>>>>> 44afc34 (Initial commit with all current changes)
     } catch (e) {
       console.error("Failed to load profile", e);
       setErr(
@@ -137,11 +129,10 @@ export default function HikerProfile() {
     [upcoming, past]
   );
 
-<<<<<<< HEAD
-=======
-  const reviewedHikeIds = useMemo(() => new Set(userReviews.map(r => r.hikeId)), [userReviews]);
+  const hasReviewedHike = (hikeId) => {
+    return userReviews.some(review => review.hikeId === hikeId);
+  };
 
->>>>>>> 44afc34 (Initial commit with all current changes)
   async function handleLeave(hikeId) {
     try {
       await api.delete(`/api/hikes/${hikeId}/join`);
@@ -268,7 +259,7 @@ export default function HikerProfile() {
             </div>
           )}
         </div>
-      ) : (
+      ) : activeTab === 'completed' ? (
         <div className="hikes-section">
           <h2 className="section-title">Completed Hikes</h2>
           {past.length === 0 ? (
@@ -287,16 +278,13 @@ export default function HikerProfile() {
                   allowLeave={false}
                   userProfile={me}
                   fromProfile={true}
-<<<<<<< HEAD
-=======
-                  needsReview={!reviewedHikeIds.has(h.id)}
->>>>>>> 44afc34 (Initial commit with all current changes)
+                  needsReview={!hasReviewedHike(h.id)}
                 />
               ))}
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
       {/* Edit Profile Modal */}
       <EditProfileModal

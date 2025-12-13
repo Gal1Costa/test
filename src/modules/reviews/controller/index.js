@@ -1,30 +1,14 @@
 /* eslint-disable */
 const { Router } = require('express');
 const { requireRole } = require('../../../app/roles.middleware');
-<<<<<<< HEAD
-=======
 const reviewsRepo = require('../repository');
 const bookingsRepo = require('../../bookings/repository');
 const hikesRepo = require('../../hikes/repository');
->>>>>>> 44afc34 (Initial commit with all current changes)
+const { prisma } = require('../../../shared/prisma');
 
 const router = Router();
 
 // POST /api/reviews
-<<<<<<< HEAD
-router.post('/', requireRole(['hiker','guide','admin']), (req, res) => {
-  res.status(201).json({ id: 'r1' });
-});
-
-// GET /api/reviews/guide/:id
-router.get('/guide/:id', requireRole(['visitor','hiker','guide','admin']), (req, res) => {
-  res.status(200).json([]);
-});
-
-// GET /api/reviews/hike/:id
-router.get('/hike/:id', requireRole(['visitor','hiker','guide','admin']), (req, res) => {
-  res.status(200).json([]);
-=======
 router.post('/', requireRole(['hiker','guide','admin']), async (req, res, next) => {
   try {
     const user = req.user;
@@ -115,7 +99,6 @@ router.get('/user/me', requireRole(['hiker','guide','admin']), async (req, res, 
     console.error('[reviews/user/me] Error listing user reviews', err);
     next(err);
   }
->>>>>>> 44afc34 (Initial commit with all current changes)
 });
 
 module.exports = router;

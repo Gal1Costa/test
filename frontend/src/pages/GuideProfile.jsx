@@ -4,6 +4,7 @@ import { auth, onAuthStateChanged } from "../firebase";
 import api from "../api";
 import EditProfileModal from "../components/EditProfileModal";
 import HikeCard from "../components/HikeCard";
+import ReviewList from "../components/ReviewList";
 import "./Profile.css";
 
 export default function GuideProfile() {
@@ -12,11 +13,6 @@ export default function GuideProfile() {
   const [me, setMe] = useState(null);
   const [upcoming, setUpcoming] = useState([]);
   const [past, setPast] = useState([]);
-<<<<<<< HEAD
-=======
-  const [reviews, setReviews] = useState([]);
-  const [userReviews, setUserReviews] = useState([]);
->>>>>>> 44afc34 (Initial commit with all current changes)
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [activeTab, setActiveTab] = useState("created");
@@ -208,35 +204,6 @@ export default function GuideProfile() {
 
       setUpcoming(upcomingHikes);
       setPast(pastHikes);
-<<<<<<< HEAD
-=======
-
-      // Load user's reviews if viewing own profile
-      if (!isPublicView) {
-        try {
-          const userRevRes = await api.get('/api/reviews/user/me');
-          setUserReviews(userRevRes.data || []);
-        } catch (urErr) {
-          console.warn('Failed to load user reviews', urErr);
-          setUserReviews([]);
-        }
-      } else {
-        setUserReviews([]);
-      }
-
-      // Load reviews for this guide
-      if (profile.guide?.id) {
-        try {
-          const revRes = await api.get(`/api/reviews/guide/${profile.guide.id}`);
-          setReviews(revRes.data || []);
-        } catch (rErr) {
-          console.warn('Failed to load guide reviews', rErr);
-          setReviews([]);
-        }
-      } else {
-        setReviews([]);
-      }
->>>>>>> 44afc34 (Initial commit with all current changes)
     } catch (e) {
       console.error("Failed to load profile", e);
       setErr(
@@ -263,11 +230,6 @@ export default function GuideProfile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authReady, location.key, location.search, location.state?.guideId]);
 
-<<<<<<< HEAD
-=======
-  const reviewedHikeIds = useMemo(() => new Set(userReviews.map(r => r.hikeId)), [userReviews]);
-
->>>>>>> 44afc34 (Initial commit with all current changes)
   const counts = useMemo(
     () => {
       const createdHikes = (upcoming || []).filter(h => h.isCreated).concat((past || []).filter(h => h.isCreated));
@@ -366,17 +328,8 @@ export default function GuideProfile() {
           <div className="stat-label">Hikes Joined</div>
         </div>
         <div className="stat-card">
-<<<<<<< HEAD
           <div className="stat-number">{counts.total}</div>
           <div className="stat-label">Total</div>
-=======
-          <div className="stat-number">{reviews.length}</div>
-          <div className="stat-label">Reviews</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number">{counts.total}</div>
-          <div className="stat-label">Total Hikes</div>
->>>>>>> 44afc34 (Initial commit with all current changes)
         </div>
       </div>
 
@@ -538,10 +491,6 @@ export default function GuideProfile() {
                     allowLeave={false}
                     userProfile={me}
                     fromProfile={true}
-<<<<<<< HEAD
-=======
-                    needsReview={!reviewedHikeIds.has(h.id)}
->>>>>>> 44afc34 (Initial commit with all current changes)
                   />
                 ))}
               </div>
@@ -550,51 +499,11 @@ export default function GuideProfile() {
         </div>
       ) : null}
 
-<<<<<<< HEAD
-=======
       {/* Reviews Section */}
-      <div className="reviews-section">
-        <h2 className="section-title">Reviews</h2>
-        {reviews.length === 0 ? (
-          <div className="empty-state">
-            <p>No reviews yet.</p>
-          </div>
-        ) : (
-          <div className="reviews-list">
-            {reviews.map((review) => (
-              <div key={review.id} className="review-card">
-                <div className="review-header">
-                  <div className="review-user">
-                    {review.user?.name || 'Anonymous'}
-                  </div>
-                  <div className="review-rating">
-                    {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
-                  </div>
-                </div>
-                {review.comment && (
-                  <div className="review-comment">
-                    {review.comment}
-                  </div>
-                )}
-                {review.tags && review.tags.length > 0 && (
-                  <div className="review-tags">
-                    {review.tags.map((tag, idx) => (
-                      <span key={idx} className="review-tag">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <div className="review-date">
-                  {new Date(review.createdAt).toLocaleDateString()}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="reviews-section-container" style={{ marginTop: '24px' }}>
+        <ReviewList guideId={me.guide?.id} title="Reviews for this Guide" />
       </div>
 
->>>>>>> 44afc34 (Initial commit with all current changes)
       {/* Edit Profile Modal */}
       <EditProfileModal
         isOpen={isEditModalOpen}
