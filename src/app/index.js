@@ -80,6 +80,9 @@ function createApp() {
   try { if (!fs.existsSync(hikesUploadsDir)) fs.mkdirSync(hikesUploadsDir, { recursive: true }); } catch (e) { /* ignore */ }
   app.use('/hikes', express.static(hikesUploadsDir));
 
+  app.use('/hikes/uploads', express.static(path.join(__dirname, '..', 'modules', 'hikes', 'uploads')));
+
+
   // Check if user is logged in on every request
   app.use(authMiddleware);
 

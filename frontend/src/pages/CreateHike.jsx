@@ -17,6 +17,7 @@ export default function CreateHike() {
   const [cover, setCover] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState(null);
+  
 
   async function handleCreate() {
     setErr(null);
@@ -44,8 +45,14 @@ export default function CreateHike() {
       fd.append('meetingPlace', basic.meetingPlace || '');
       fd.append('whatToBring', (basic.whatToBring || '').toString());
 
-      if (route.gpxFile) fd.append('gpx', route.gpxFile);
+      fd.append("route", JSON.stringify(route?.points || []));
+      fd.append("mapLocation", JSON.stringify(route?.location || null));
+
+      //if (route.gpxFile) fd.append('gpx', route.gpxFile);
       if (cover.coverFile) fd.append('cover', cover.coverFile);
+      
+      console.log("ROUTE STATE JUST BEFORE SUBMIT:", route);
+
 
       const res = await api.post('/api/hikes', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       const created = res?.data;
