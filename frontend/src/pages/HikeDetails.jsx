@@ -3,6 +3,8 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { auth, onAuthStateChanged } from "../firebase";
 import api from "../api";
 import ReviewCard from "../components/ReviewCard";
+import { MapContainer, TileLayer, Polyline, Marker } from "react-leaflet";
+
 
 export default function HikeDetails() {
   const { id } = useParams();
@@ -22,7 +24,6 @@ export default function HikeDetails() {
   const [deleting, setDeleting] = useState(false);
   const [editCoverPreview, setEditCoverPreview] = useState(null);
   const [editCoverFile, setEditCoverFile] = useState(null);
-  const [editGpxFile, setEditGpxFile] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
 
@@ -194,7 +195,7 @@ export default function HikeDetails() {
   }
 
   async function handleEdit() {
-    if (!editFields.title && !editFields.description && !editFields.capacity && !editFields.price && !editFields.difficulty && !editFields.distance && !editFields.duration && !editFields.meetingTime && !editFields.location && !editFields.date && !editFields.meetingPlace && !editFields.elevationGain && !editFields.whatToBring && !editCoverFile && !editGpxFile) {
+    if (!editFields.title && !editFields.description && !editFields.capacity && !editFields.price && !editFields.difficulty && !editFields.distance && !editFields.duration && !editFields.meetingTime && !editFields.location && !editFields.date && !editFields.meetingPlace && !editFields.elevationGain && !editFields.whatToBring && !editCoverFile) {
       setEditErr('No changes to save');
       return;
     }
@@ -221,13 +222,11 @@ export default function HikeDetails() {
       
       // Add files
       if (editCoverFile) fd.append('cover', editCoverFile);
-      if (editGpxFile) fd.append('gpx', editGpxFile);
 
       await api.put(`/api/hikes/${hike.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       setEditMode(false);
       setEditFields({});
       setEditCoverFile(null);
-      setEditGpxFile(null);
       setEditCoverPreview(null);
       await load();
     } catch (e) {
@@ -295,24 +294,7 @@ export default function HikeDetails() {
 
           <hr style={{ border: 'none', borderTop: '1px solid #e6eef0', margin: '18px 0' }} />
 
-          <h3 style={{ marginTop: 0 }}>Trail Map & Route</h3>
-          <div style={{ marginTop: 8, border: '1px dashed #e6eef0', borderRadius: 8, padding: 24, minHeight: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
-            {hike.gpxPath ? (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 24 }}>🗺️</div>
-                <div style={{ marginTop: 8, color: '#666' }}>{hike.distance ? `${hike.distance} · ${hike.duration || ''}` : 'Interactive trail map'}</div>
-                <div style={{ marginTop: 12 }}>
-                  <a href={hike.gpxPath.startsWith('/') ? `${api.defaults.baseURL}${hike.gpxPath}` : hike.gpxPath} download style={{ color: '#2d6a4f', textDecoration: 'underline' }}>📍 Download GPX</a>
-                </div>
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', color: '#666' }}>
-                <div style={{ fontSize: 36 }}>📍</div>
-                <div style={{ marginTop: 8 }}>Interactive trail map</div>
-                <div style={{ marginTop: 8, color: '#999' }}>{hike.distance ? `${hike.distance} · ${hike.duration || ''}` : ''}</div>
-              </div>
-            )}
-          </div>
+        
 
           <hr style={{ border: 'none', borderTop: '1px solid #e6eef0', margin: '18px 0' }} />
 
@@ -369,6 +351,29 @@ export default function HikeDetails() {
                 <div style={{ fontSize: 13, color: '#444' }}><strong>Joined:</strong> {participantsCount}{capacity ? ` / ${capacity}` : ''} {isFull ? '(Full)' : ''}</div>
               </div>
             )
+          )}
+
+          {/* Non-edit Route Map (visible when route exists and not in edit mode) */}
+          {!editMode && Array.isArray(hike.route) && hike.route.length > 0 && (
+            <div style={{ marginTop: 18 }}>
+              <h3 style={{ marginTop: 0 }}>Route Map</h3>
+              <div style={{ height: 360, width: '100%', borderRadius: 8, overflow: 'hidden', marginTop: 8 }}>
+                <MapContainer
+                  center={
+                    hike.mapLocation?.lat && hike.mapLocation?.lng
+                      ? [hike.mapLocation.lat, hike.mapLocation.lng]
+                      : hike.route[0]
+                  }
+                  zoom={12}
+                  style={{ height: '100%', width: '100%' }}
+                >
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap contributors" />
+                  <Polyline positions={hike.route} />
+                  <Marker position={hike.route[0]} />
+                  {hike.route.length > 1 && <Marker position={hike.route[hike.route.length - 1]} />}
+                </MapContainer>
+              </div>
+            </div>
           )}
 
           {/* Owner actions (keeps existing edit UI below) */}
@@ -610,27 +615,46 @@ export default function HikeDetails() {
                 </div>
               </div>
 
-              <div style={{ marginBottom: 12 }}>
-                <h4 style={{ marginTop: 0, marginBottom: 8 }}>GPX Route (Optional)</h4>
-                <label style={{ display: 'block', cursor: 'pointer', border: '1px dashed #e6eef0', borderRadius: 8, padding: 12, textAlign: 'center', color: '#666' }}>
-                  <input 
-                    type="file" 
-                    accept=".gpx" 
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      setEditGpxFile(file || null);
-                    }}
-                    style={{ display: 'none' }}
-                  />
-                  <div>📍 Click to upload GPX file</div>
-                </label>
-                {editGpxFile && <div style={{ marginTop: 8, fontSize: 13, color: '#666' }}>Selected: {editGpxFile.name}</div>}
+              <h3 style={{ marginTop: 0 }}>Trail Map & Route</h3>
+
+              <div style={{ marginTop: 8, border: "1px solid #e6eef0", borderRadius: 8, overflow: "hidden" }}>
+                {Array.isArray(hike.route) && hike.route.length > 0 ? (
+                  <div style={{ height: 360, width: "100%" }}>
+                    <MapContainer
+                      center={
+                        hike.mapLocation?.lat && hike.mapLocation?.lng
+                          ? [hike.mapLocation.lat, hike.mapLocation.lng]
+                          : hike.route[0]
+                      }
+                      zoom={12}
+                      style={{ height: "100%", width: "100%" }}
+                    >
+                      <TileLayer
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution="© OpenStreetMap contributors"
+                      />
+                      <Polyline positions={hike.route} />
+                      <Marker position={hike.route[0]} />
+                      {hike.route.length > 1 && <Marker position={hike.route[hike.route.length - 1]} />}
+                    </MapContainer>
+                  </div>
+                ) : (
+                  <div style={{ padding: 24, textAlign: "center", color: "#666", background: "#f9fafb" }}>
+                    <div style={{ fontSize: 36 }}>🗺️</div>
+                    <div style={{ marginTop: 8 }}>No route provided for this hike.</div>
+                  </div>
+                )}
               </div>
+
+            <div style={{ marginTop: 10, fontSize: 13, color: "#666" }}>
+              {hike.distance ? `${hike.distance} · ${hike.duration || ""}` : ""}
+            </div>
+
 
               {editErr && <div style={{ background: '#fff3f2', border: '1px solid #ffd2cf', padding: 8, borderRadius: 6, color: '#9b2c2c', marginBottom: 12, fontSize: 13 }}>{editErr}</div>}
 
               <div style={{ display: 'flex', gap: 12 }}>
-                <button className="btn-cancel" onClick={() => { setEditMode(false); setEditFields({}); setEditErr(null); setEditCoverFile(null); setEditGpxFile(null); setEditCoverPreview(null); }}>
+                <button className="btn-cancel" onClick={() => { setEditMode(false); setEditFields({}); setEditErr(null); setEditCoverFile(null); setEditCoverPreview(null); }}>
                   Cancel
                 </button>
                 <button className="btn-primary" onClick={handleEdit} disabled={editSaving} style={{ background: '#2d6a4f', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, cursor: editSaving ? 'not-allowed' : 'pointer', opacity: editSaving ? 0.6 : 1 }}>
