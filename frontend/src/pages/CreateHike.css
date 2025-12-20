@@ -19,6 +19,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+  align-items: start;
 }
 
 label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #333; }
@@ -30,8 +31,6 @@ input[type="text"], input[type="date"], input[type="time"], input[type="number"]
   margin-top: 6px;
   box-sizing: border-box;
 }
-
-.grid-row { align-items: end; }
 
 textarea { resize: vertical; }
 
@@ -52,3 +51,39 @@ textarea { resize: vertical; }
 
 .alert-error { background:#fff3f2;border:1px solid #ffd2cf;padding:10px;border-radius:8px;color:#9b2c2c;margin-bottom:12px }
 
+/* Field Error Styling */
+.field-error {
+  color: #dc2626;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.field-error-container {
+  display: flex;
+  flex-direction: column;
+}
+
+label input.has-error,
+label select.has-error,
+label textarea.has-error {
+  border-color: #dc2626;
+  background-color: #fef2f2;
+}
+
+label input.has-error:focus,
+label select.has-error:focus,
+label textarea.has-error:focus {
+  outline: none;
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.section-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  color: #991b1b;
+  font-size: 13px;
+}

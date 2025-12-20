@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import Header from '../components/Header';
@@ -7,6 +7,8 @@ import TrailDetails from '../components/create/TrailDetails';
 import MapRoute from '../components/create/MapRoute';
 import WhatToBring from '../components/create/WhatToBring';
 import CoverImage from '../components/create/CoverImage';
+import { calculateRouteDistance, calculateRouteDuration, formatDuration } from '../utils/mapUtils.jsx';
+import { validateHikeForm } from '../utils/hikeValidation.jsx';
 import './CreateHike.css';
 
 export default function CreateHike() {
@@ -17,15 +19,59 @@ export default function CreateHike() {
   const [cover, setCover] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({});
+
+  // Auto-calculate distance and duration when route changes (only if fields are empty)
+  useEffect(() => {
+    if (route.points && route.points.length >= 2) {
+      const distance = calculateRouteDistance(route.points);
+      // Parse elevation gain, removing units like "m" or "meters"
+      const elevationGainStr = trail.elevationGain || '';
+      const elevationGain = parseFloat(elevationGainStr.replace(/[^\d.]/g, '')) || 0;
+      const difficulty = basic.difficulty || 'MODERATE';
+
+      // Update distance (format to 1 decimal place)
+      const formattedDistance = distance > 0 ? `${distance.toFixed(1)} km` : '';
+
+      // Calculate duration if we have elevation data
+      const durationHours = calculateRouteDuration(route.points, elevationGain, difficulty);
+      const formattedDuration = durationHours > 0 ? formatDuration(durationHours) : '';
+
+      // Only auto-fill if fields are empty (user can manually override)
+      const updates = {};
+      if (!trail.distance && formattedDistance) {
+        updates.distance = formattedDistance;
+      }
+      if (!trail.duration && formattedDuration) {
+        updates.duration = formattedDuration;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        setTrail(prev => ({ ...prev, ...updates }));
+      }
+    }
+  }, [route.points, trail.elevationGain, basic.difficulty]);
   
 
   async function handleCreate() {
     setErr(null);
-    // simple validation
-    if (!basic.name || !basic.date || !basic.meetingPlace) {
-      setErr('Please fill required fields (Name, Date, Meeting Place).');
+    
+    // Comprehensive validation
+    const validation = validateHikeForm({ basic, trail, route, cover });
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors || {});
+      // Scroll to first error
+      setTimeout(() => {
+        const firstError = document.querySelector('.has-error');
+        if (firstError) {
+          firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
       return;
     }
+    
+    // Clear validation errors if form is valid
+    setValidationErrors({});
 
     setSubmitting(true);
     try {
@@ -48,7 +94,6 @@ export default function CreateHike() {
       fd.append("route", JSON.stringify(route?.points || []));
       fd.append("mapLocation", JSON.stringify(route?.location || null));
 
-      //if (route.gpxFile) fd.append('gpx', route.gpxFile);
       if (cover.coverFile) fd.append('cover', cover.coverFile);
       
       console.log("ROUTE STATE JUST BEFORE SUBMIT:", route);
@@ -73,11 +118,11 @@ export default function CreateHike() {
 
         {err && <div className="alert-error">{err}</div>}
 
-        <BasicInformation value={basic} onChange={setBasic} />
-        <TrailDetails value={trail} onChange={setTrail} />
-        <MapRoute value={route} onChange={setRoute} />
+        <BasicInformation value={basic} onChange={setBasic} errors={validationErrors.basic} />
+        <TrailDetails value={trail} onChange={setTrail} errors={validationErrors.trail} />
+        <MapRoute value={route} onChange={setRoute} errors={validationErrors.route} />
         <WhatToBring value={basic} onChange={setBasic} />
-        <CoverImage value={cover} onChange={setCover} />
+        <CoverImage value={cover} onChange={setCover} errors={validationErrors.cover} />
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 20 }}>
           <button className="btn-cancel" onClick={() => navigate(-1)} disabled={submitting}>Cancel</button>

@@ -3,8 +3,24 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { auth, onAuthStateChanged } from "../firebase";
 import api from "../api";
 import ReviewCard from "../components/ReviewCard";
-import { MapContainer, TileLayer, Polyline, Marker } from "react-leaflet";
+import EditHikeForm from "../components/EditHikeForm";
+import MapRoute from '../components/create/MapRoute';
+import { MapContainer, TileLayer, Polyline, Marker, useMapEvents } from "react-leaflet";
+import { createDestinationMarkers, createStartEndMarkers } from "../utils/mapUtils.jsx";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
+// Fix Leaflet marker icons for bundlers (Vite/Webpack)
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 export default function HikeDetails() {
   const { id } = useParams();
@@ -19,12 +35,7 @@ export default function HikeDetails() {
   const [userProfile, setUserProfile] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [editErr, setEditErr] = useState(null);
-  const [editFields, setEditFields] = useState({});
   const [deleting, setDeleting] = useState(false);
-  const [editCoverPreview, setEditCoverPreview] = useState(null);
-  const [editCoverFile, setEditCoverFile] = useState(null);
-  const [editSaving, setEditSaving] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
 
   // Listen for auth state changes
@@ -96,6 +107,7 @@ export default function HikeDetails() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authReady, id, user]);
+
 
   const joinedSet = useMemo(() => new Set(joinedIds), [joinedIds]);
 
@@ -183,58 +195,19 @@ export default function HikeDetails() {
   async function handleDelete() {
     if (!window.confirm('Are you sure you want to delete this hike? This cannot be undone.')) return;
     setDeleting(true);
-    setEditErr(null);
     try {
-      await api.delete(`/api/hikes/${hike.id}`);
+      const response = await api.delete(`/api/hikes/${hike.id}`);
+      // Success - navigate to profile
       navigate('/profile');
     } catch (e) {
-      setEditErr(e?.response?.data?.error || e.message || 'Failed to delete hike');
+      console.error('Delete hike failed:', e);
+      const errorMessage = e?.response?.data?.error || e?.message || 'Failed to delete hike';
+      alert(`Error: ${errorMessage}`);
     } finally {
       setDeleting(false);
     }
   }
 
-  async function handleEdit() {
-    if (!editFields.title && !editFields.description && !editFields.capacity && !editFields.price && !editFields.difficulty && !editFields.distance && !editFields.duration && !editFields.meetingTime && !editFields.location && !editFields.date && !editFields.meetingPlace && !editFields.elevationGain && !editFields.whatToBring && !editCoverFile) {
-      setEditErr('No changes to save');
-      return;
-    }
-    
-    setEditErr(null);
-    setEditSaving(true);
-    try {
-      const fd = new FormData();
-      
-      // Add fields that were edited
-      if (editFields.title) fd.append('title', editFields.title);
-      if (editFields.description !== undefined) fd.append('description', editFields.description);
-      if (editFields.capacity !== undefined) fd.append('capacity', editFields.capacity || '');
-      if (editFields.price !== undefined) fd.append('price', editFields.price || '');
-      if (editFields.difficulty) fd.append('difficulty', editFields.difficulty);
-      if (editFields.distance) fd.append('distance', editFields.distance);
-      if (editFields.duration) fd.append('duration', editFields.duration);
-      if (editFields.meetingTime !== undefined) fd.append('meetingTime', editFields.meetingTime);
-      if (editFields.location) fd.append('location', editFields.location);
-      if (editFields.date) fd.append('date', editFields.date);
-      if (editFields.meetingPlace !== undefined) fd.append('meetingPlace', editFields.meetingPlace);
-      if (editFields.elevationGain !== undefined) fd.append('elevationGain', editFields.elevationGain);
-      if (editFields.whatToBring !== undefined) fd.append('whatToBring', editFields.whatToBring);
-      
-      // Add files
-      if (editCoverFile) fd.append('cover', editCoverFile);
-
-      await api.put(`/api/hikes/${hike.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      setEditMode(false);
-      setEditFields({});
-      setEditCoverFile(null);
-      setEditCoverPreview(null);
-      await load();
-    } catch (e) {
-      setEditErr(e?.response?.data?.error || e.message || 'Failed to update hike');
-    } finally {
-      setEditSaving(false);
-    }
-  }
 
   return (
     <div>
@@ -294,10 +267,6 @@ export default function HikeDetails() {
 
           <hr style={{ border: 'none', borderTop: '1px solid #e6eef0', margin: '18px 0' }} />
 
-        
-
-          <hr style={{ border: 'none', borderTop: '1px solid #e6eef0', margin: '18px 0' }} />
-
           <h3 style={{ marginTop: 0 }}>What to Bring</h3>
           {hike.whatToBring ? (
             (() => {
@@ -318,7 +287,30 @@ export default function HikeDetails() {
             <p style={{ color: '#666' }}>No suggestions provided.</p>
           )}
 
-          {/* Participants section after What to Bring (visible only when >=1 participant) */}
+          {/* Non-edit Route Map (visible when route exists and not in edit mode) */}
+          {!editMode && Array.isArray(hike.route) && hike.route.length > 0 && (
+            <div style={{ marginTop: 18 }}>
+              <h3 style={{ marginTop: 0 }}>Route Map</h3>
+              <div style={{ height: 360, width: '100%', borderRadius: 8, overflow: 'hidden', marginTop: 8 }}>
+                <MapContainer
+                  center={
+                    hike.mapLocation?.lat && hike.mapLocation?.lng
+                      ? [hike.mapLocation.lat, hike.mapLocation.lng]
+                      : hike.route[0]
+                  }
+                  zoom={12}
+                  style={{ height: '100%', width: '100%' }}
+                >
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap contributors" />
+                  <Polyline positions={hike.route} color="#2d6a4f" weight={4} opacity={0.8} />
+                  {createStartEndMarkers(hike.route)}
+                  {createDestinationMarkers(hike.route)}
+                </MapContainer>
+              </div>
+            </div>
+          )}
+
+          {/* Participants section after Trail Map & Route */}
           {hike.participants && hike.participants.length > 0 ? (
             <div style={{ marginTop: 12 }}>
               <h4 style={{ marginTop: 0 }}>Participants</h4>
@@ -353,37 +345,18 @@ export default function HikeDetails() {
             )
           )}
 
-          {/* Non-edit Route Map (visible when route exists and not in edit mode) */}
-          {!editMode && Array.isArray(hike.route) && hike.route.length > 0 && (
-            <div style={{ marginTop: 18 }}>
-              <h3 style={{ marginTop: 0 }}>Route Map</h3>
-              <div style={{ height: 360, width: '100%', borderRadius: 8, overflow: 'hidden', marginTop: 8 }}>
-                <MapContainer
-                  center={
-                    hike.mapLocation?.lat && hike.mapLocation?.lng
-                      ? [hike.mapLocation.lat, hike.mapLocation.lng]
-                      : hike.route[0]
-                  }
-                  zoom={12}
-                  style={{ height: '100%', width: '100%' }}
-                >
-                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap contributors" />
-                  <Polyline positions={hike.route} />
-                  <Marker position={hike.route[0]} />
-                  {hike.route.length > 1 && <Marker position={hike.route[hike.route.length - 1]} />}
-                </MapContainer>
-              </div>
-            </div>
-          )}
-
           {/* Owner actions (keeps existing edit UI below) */}
 
           </div>
 
           {/* Right (sidebar) column */}
           <aside style={{ width: '100%' }}>
-            {/* Join / Unjoin container (visible to non-creators) */}
-            {!isCreator && (
+            {/* Join / Unjoin container */}
+            {isCreator ? (
+              <div style={{ marginBottom: 12, padding: 12, borderRadius: 8, background: '#fff', border: '1px solid #e5e7eb', textAlign: 'center', color: '#2d6a4f', fontWeight: 500 }}>
+                You are the creator of this hike
+              </div>
+            ) : (
               <div style={{ marginBottom: 12, padding: 12, borderRadius: 8, background: '#fff' }}>
                 {isJoined ? (
                   <button onClick={handleLeave} className="btn-cancel" style={{ background: '#fff', border: '1px solid #e53e3e', color: '#e53e3e', width: '100%', padding: '8px 12px', borderRadius: 8 }}>Unjoin Hike</button>
@@ -444,6 +417,18 @@ export default function HikeDetails() {
                     })() : 'Not specified'}
                   </div>
                 </div>
+                <div>
+                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Distance</div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{hike.distance || 'Not specified'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Duration</div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{hike.duration || 'Not specified'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Elevation Gain</div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{hike.elevationGain || 'Not specified'}</div>
+                </div>
               </div>
             </div>
 
@@ -466,206 +451,36 @@ export default function HikeDetails() {
         <div style={{ marginTop: 24 }}>
           {!editMode ? (
             <div style={{ display: 'flex', gap: 12 }}>
-              <button className="btn-cancel" style={{ borderColor: '#2d6a4f', color: '#2d6a4f' }} onClick={() => { setEditMode(true); setEditFields({}); setEditErr(null); }}>
+                <button 
+                  className="btn-cancel" 
+                  style={{ borderColor: '#2d6a4f', color: '#2d6a4f' }} 
+                  onClick={() => setEditMode(true)}
+                >
                 Edit Hike
               </button>
-              <button className="btn-cancel" style={{ borderColor: '#e53e3e', color: '#e53e3e' }} onClick={handleDelete} disabled={deleting}>
+                <button 
+                  className="btn-cancel" 
+                  style={{ borderColor: '#e53e3e', color: '#e53e3e' }} 
+                  onClick={handleDelete} 
+                  disabled={deleting}
+                >
                 {deleting ? 'Deleting…' : 'Delete Hike'}
               </button>
             </div>
           ) : (
-            <div style={{ background: '#f9fafb', padding: 16, borderRadius: 8, border: '1px solid #e5e7eb' }}>
-              <h3 style={{ marginTop: 0 }}>Edit Hike</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  Title
-                  <input type="text" value={editFields.title || hike.title || ''} onChange={(e) => setEditFields({ ...editFields, title: e.target.value })} placeholder="Hike title" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
-                </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    Location
-                    <input type="text" value={editFields.location || hike.location || ''} onChange={(e) => setEditFields({ ...editFields, location: e.target.value })} placeholder="Location" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    Meeting Place
-                    <input type="text" value={editFields.meetingPlace !== undefined ? editFields.meetingPlace : (hike.meetingPlace || '')} onChange={(e) => setEditFields({ ...editFields, meetingPlace: e.target.value })} placeholder="Street / meetup spot" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
-                  </label>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  Difficulty
-                  <select value={editFields.difficulty || hike.difficulty || ''} onChange={(e) => setEditFields({ ...editFields, difficulty: e.target.value })} style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }}>
-                    <option value="">Select difficulty</option>
-                    <option value="EASY">Easy</option>
-                    <option value="MODERATE">Moderate</option>
-                    <option value="HARD">Hard</option>
-                  </select>
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  Capacity
-                  <input type="number" min="1" value={editFields.capacity !== undefined ? editFields.capacity : hike.capacity || ''} onChange={(e) => setEditFields({ ...editFields, capacity: e.target.value })} placeholder="Max participants" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
-                </label>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  Distance
-                  <input type="text" value={editFields.distance || hike.distance || ''} onChange={(e) => setEditFields({ ...editFields, distance: e.target.value })} placeholder="e.g., 8.5 km" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  Duration
-                  <input type="text" value={editFields.duration || hike.duration || ''} onChange={(e) => setEditFields({ ...editFields, duration: e.target.value })} placeholder="e.g., 4-5 hours" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  Elevation Gain
-                  <input type="text" value={editFields.elevationGain !== undefined ? editFields.elevationGain : (hike.elevationGain || '')} onChange={(e) => setEditFields({ ...editFields, elevationGain: e.target.value })} placeholder="e.g., 450 m" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
-                </label>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  Meeting Time
-                  <input type="time" value={editFields.meetingTime || hike.meetingTime || ''} onChange={(e) => setEditFields({ ...editFields, meetingTime: e.target.value })} style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  Price (USD)
-                  <input type="number" min="0" value={editFields.price !== undefined ? editFields.price : hike.price || ''} onChange={(e) => setEditFields({ ...editFields, price: e.target.value })} placeholder="Price or leave empty for free" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
-                </label>
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  Date
-                  <input type="date" value={editFields.date || (hike.date ? hike.date.split('T')[0] : '')} onChange={(e) => setEditFields({ ...editFields, date: e.target.value })} style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }} />
-                </label>
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  Description
-                  <textarea value={editFields.description !== undefined ? editFields.description : hike.description || ''} onChange={(e) => setEditFields({ ...editFields, description: e.target.value })} placeholder="Describe the hike..." rows={4} style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6, fontFamily: 'inherit' }} />
-                </label>
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  What To Bring (one per line)
-                  <textarea value={editFields.whatToBring !== undefined ? editFields.whatToBring : (typeof hike.whatToBring === 'string' ? hike.whatToBring : Array.isArray(hike.whatToBring) ? hike.whatToBring.join('\n') : '')} onChange={(e) => setEditFields({ ...editFields, whatToBring: e.target.value })} placeholder="e.g. Water\nSnacks\nWarm jacket" rows={4} style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6, fontFamily: 'inherit' }} />
-                </label>
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <h4 style={{ marginTop: 0, marginBottom: 8 }}>Cover Image</h4>
-                <div style={{ border: '1px dashed #e6eef0', borderRadius: 8, padding: 12, marginBottom: 8 }}>
-                  {editCoverPreview || (hike.imageUrl && !editCoverFile) ? (
-                    <div style={{ width: '100%', height: 200, position: 'relative', marginBottom: 8 }}>
-                      <img 
-                        src={editCoverPreview || (hike.imageUrl.startsWith('/') ? `${api.defaults.baseURL}${hike.imageUrl}` : hike.imageUrl)} 
-                        alt="cover preview" 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} 
-                      />
-                      <div style={{ position: 'absolute', right: 8, top: 8, display: 'flex', gap: 8 }}>
-                        <button 
-                          type="button" 
-                          onClick={() => {
-                            const input = document.createElement('input');
-                            input.type = 'file';
-                            input.accept = 'image/*';
-                            input.onchange = (e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const url = URL.createObjectURL(file);
-                                setEditCoverPreview(url);
-                                setEditCoverFile(file);
-                              }
-                            };
-                            input.click();
-                          }}
-                          style={{ background: '#fff', border: '1px solid #e5e7eb', padding: '6px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
-                        >
-                          Change
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => { setEditCoverPreview(null); setEditCoverFile(null); }} 
-                          style={{ background: '#fff', border: '1px solid #e5e7eb', padding: '6px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <label style={{ display: 'block', cursor: 'pointer', textAlign: 'center', padding: 16, color: '#666' }}>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const url = URL.createObjectURL(file);
-                            setEditCoverPreview(url);
-                            setEditCoverFile(file);
-                          }
-                        }}
-                        style={{ display: 'none' }}
-                      />
-                      <div>📸 Click to upload cover image</div>
-                    </label>
-                  )}
-                </div>
-              </div>
-
-              <h3 style={{ marginTop: 0 }}>Trail Map & Route</h3>
-
-              <div style={{ marginTop: 8, border: "1px solid #e6eef0", borderRadius: 8, overflow: "hidden" }}>
-                {Array.isArray(hike.route) && hike.route.length > 0 ? (
-                  <div style={{ height: 360, width: "100%" }}>
-                    <MapContainer
-                      center={
-                        hike.mapLocation?.lat && hike.mapLocation?.lng
-                          ? [hike.mapLocation.lat, hike.mapLocation.lng]
-                          : hike.route[0]
-                      }
-                      zoom={12}
-                      style={{ height: "100%", width: "100%" }}
-                    >
-                      <TileLayer
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        attribution="© OpenStreetMap contributors"
-                      />
-                      <Polyline positions={hike.route} />
-                      <Marker position={hike.route[0]} />
-                      {hike.route.length > 1 && <Marker position={hike.route[hike.route.length - 1]} />}
-                    </MapContainer>
-                  </div>
-                ) : (
-                  <div style={{ padding: 24, textAlign: "center", color: "#666", background: "#f9fafb" }}>
-                    <div style={{ fontSize: 36 }}>🗺️</div>
-                    <div style={{ marginTop: 8 }}>No route provided for this hike.</div>
-                  </div>
-                )}
-              </div>
-
-            <div style={{ marginTop: 10, fontSize: 13, color: "#666" }}>
-              {hike.distance ? `${hike.distance} · ${hike.duration || ""}` : ""}
-            </div>
-
-
-              {editErr && <div style={{ background: '#fff3f2', border: '1px solid #ffd2cf', padding: 8, borderRadius: 6, color: '#9b2c2c', marginBottom: 12, fontSize: 13 }}>{editErr}</div>}
-
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button className="btn-cancel" onClick={() => { setEditMode(false); setEditFields({}); setEditErr(null); setEditCoverFile(null); setEditCoverPreview(null); }}>
-                  Cancel
-                </button>
-                <button className="btn-primary" onClick={handleEdit} disabled={editSaving} style={{ background: '#2d6a4f', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, cursor: editSaving ? 'not-allowed' : 'pointer', opacity: editSaving ? 0.6 : 1 }}>
-                  {editSaving ? 'Saving…' : 'Save Changes'}
-                </button>
-              </div>
-            </div>
+              <EditHikeForm
+                hike={hike}
+                onSave={() => {
+                  setEditMode(false);
+                  load();
+                }}
+                onCancel={() => setEditMode(false)}
+                onDelete={handleDelete}
+                deleting={deleting}
+              />
           )}
         </div>
       )}
-      {!isCreator && editErr && <div className="alert-error" style={{ marginTop: 8 }}>{editErr}</div>}
       </div>
     </div>
   );

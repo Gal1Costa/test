@@ -62,29 +62,25 @@ model Hike {
   id            String          @id @default(uuid())
   title         String
   description   String?
-  price         Int?
-  createdAt     DateTime        @default(now())
-  guideId       String
-  capacity      Int?
-  date          DateTime?
-  location      String?
-  coverUrl      String?
+  difficulty    DifficultyLevel
   distance      String?
   duration      String?
-  gpxPath       String?
+  price         Int?
+  capacity      Int?
+  location      String?
+  date          DateTime?
   meetingTime   String?
-  updatedAt     DateTime        @updatedAt
-  difficulty    DifficultyLevel
-  elevationGain String?
   meetingPlace  String?
+  elevationGain String?
   whatToBring   String?
-  bookings      Booking[]
-  guide         Guide           @relation(fields: [guideId], references: [id], onDelete: Cascade)
-  mapLocation   Json?
-  route         Json?
   routePath     String?
-
-
+  coverUrl      String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  guideId       String
+  bookings      Booking[]
+  reviews       Review[]
+  guide         Guide           @relation(fields: [guideId], references: [id], onDelete: Cascade)
 }
 
 model Booking {
@@ -101,11 +97,14 @@ model Review {
   id        String   @id @default(uuid())
   userId    String
   guideId   String
+  hikeId    String
+  tags      String[]
   rating    Int
   comment   String?
   createdAt DateTime @default(now())
   guide     Guide    @relation(fields: [guideId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
+  hike      Hike     @relation(fields: [hikeId], references: [id])
 }
 
 enum DifficultyLevel {
