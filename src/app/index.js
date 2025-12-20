@@ -74,7 +74,7 @@ function createApp() {
   };
 
   // Serve uploads directory (local fallback storage)
-  // Serve hikes module uploads (covers, gpx, etc.)
+  // Serve hikes module uploads (covers etc.)
   const fs = require('fs');
   const hikesUploadsDir = path.join(__dirname, '../modules/hikes/uploads');
   try { if (!fs.existsSync(hikesUploadsDir)) fs.mkdirSync(hikesUploadsDir, { recursive: true }); } catch (e) { /* ignore */ }

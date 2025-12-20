@@ -1,6 +1,6 @@
 /* eslint-disable */
 /**
- * Shared file upload handler for hikes (covers and GPX files).
+ * Shared file upload handler for hikes (covers files).
  * Handles both storage adapter (Firebase) and local filesystem fallback.
  */
 
@@ -10,7 +10,7 @@ const path = require('path');
 /**
  * Save a file buffer to local filesystem within the hikes module.
  * Creates directories as needed. Returns a web-accessible path.
- * @param {string} folder - Subdirectory under hikes module uploads (e.g., 'covers', 'gpx')
+ * @param {string} folder - Subdirectory under hikes module uploads (e.g., 'covers')
  * @param {string} filename - Target filename
  * @param {Buffer} buffer - File contents
  * @returns {string} Web-accessible path (e.g., '/hikes/covers/1234-file.jpg')
@@ -25,11 +25,11 @@ function saveLocal(folder, filename, buffer) {
 }
 
 /**
- * Upload a single file (cover or gpx).
+ * Upload a single file.
  * Attempts to use the storage adapter (Firebase); falls back to local save.
  * @param {Object} params
  * @param {Object} params.file - Multer file object { originalname, buffer, mimetype }
- * @param {string} params.folder - Target folder ('covers' or 'gpx')
+ * @param {string} params.folder - Target folder ('covers')
  * @param {Object} params.storageAdapter - Firebase storage adapter (or null)
  * @returns {Promise<string>} URL of uploaded file
  */
@@ -58,10 +58,10 @@ async function uploadFile({ file, folder, storageAdapter }) {
 }
 
 /**
- * Process file uploads (cover image and optional GPX file) in a hike request.
- * Populates data object with coverUrl and gpxPath.
+ * Process file uploads (cover image) in a hike request.
+ * Populates data object with coverUrl.
  * @param {Object} params
- * @param {Object} params.files - Multer files object { cover: [], gpx: [] }
+ * @param {Object} params.files - Multer files object { cover: []}
  * @param {Object} params.data - Hike data object to populate
  * @param {Object} params.storageAdapter - Firebase storage adapter (or null)
  * @returns {Promise<void>}
@@ -79,15 +79,6 @@ async function handleFileUploads({ files, data, storageAdapter }) {
     });
   }
 
-  // Handle GPX file
-  const gpxArr = files['gpx'];
-  if (gpxArr?.length > 0) {
-    data.gpxPath = await uploadFile({
-      file: gpxArr[0],
-      folder: 'gpx',
-      storageAdapter,
-    });
-  }
 }
 
 module.exports = {

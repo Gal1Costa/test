@@ -276,6 +276,27 @@ router.put('/:id', upload.fields([{ name: 'cover' }]), async (req, res, next) =>
 router.delete('/:id', async (req, res, next) => {
   try {
     if (!repo?.deleteHike) return send501(res, 'deleteHike not implemented');
+
+    // Verify ownership (same logic as PUT endpoint)
+    const firebaseUid = req.user?.firebaseUid || req.user?.id || null;
+    if (!firebaseUid) return send401(res, 'You must be authenticated to delete a hike');
+
+    if (!usersRepo?.getCurrentUserProfile) {
+      console.warn('[hikes/controller] usersRepo not available');
+      return send500(res, 'User repository not available');
+    }
+
+    const profile = await usersRepo.getCurrentUserProfile(
+      firebaseUid,
+      req.user ? { email: req.user.email, name: req.user.name, role: req.user.role } : null
+    );
+
+    if (!profile?.guide) return send403(res, 'Only guides can delete hikes');
+
+    const hike = await repo.getHikeById(req.params.id);
+    if (!hike) return send404(res, 'Hike not found');
+    if (hike.guideId !== profile.guide.id) return send403(res, 'You can only delete your own hikes');
+
     await repo.deleteHike(req.params.id);
     res.status(204).end();
   } catch (err) { next(err); }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-export default function CoverImage({ value, onChange }) {
+export default function CoverImage({ value, onChange, errors = {} }) {
+  const getError = (field) => errors[field];
   const [preview, setPreview] = useState(null);
   const inputRef = useRef(null);
 
@@ -35,6 +36,11 @@ export default function CoverImage({ value, onChange }) {
   return (
     <div className="panel">
       <h3>Cover Image</h3>
+      {getError('coverFile') && (
+        <div style={{ marginBottom: 12 }}>
+          <span className="field-error">{getError('coverFile')}</span>
+        </div>
+      )}
       <div className="cover-placeholder">
         {preview ? (
           <div style={{ width: '100%', height: '100%', position: 'relative' }}>

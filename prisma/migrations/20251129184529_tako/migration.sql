@@ -5,7 +5,6 @@
   - You are about to drop the column `coverUrl` on the `Hike` table. All the data in the column will be lost.
   - You are about to drop the column `distance` on the `Hike` table. All the data in the column will be lost.
   - You are about to drop the column `duration` on the `Hike` table. All the data in the column will be lost.
-  - You are about to drop the column `gpxPath` on the `Hike` table. All the data in the column will be lost.
   - You are about to drop the column `meetingTime` on the `Hike` table. All the data in the column will be lost.
   - You are about to drop the column `updatedAt` on the `Hike` table. All the data in the column will be lost.
   - The `difficulty` column on the `Hike` table would be dropped and recreated. This will lead to data loss if there is data in the column.
@@ -31,7 +30,6 @@ ALTER COLUMN "updatedAt" SET DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE "Hike" DROP COLUMN "coverUrl",
 DROP COLUMN "distance",
 DROP COLUMN "duration",
-DROP COLUMN "gpxPath",
 DROP COLUMN "meetingTime",
 DROP COLUMN "updatedAt",
 ADD COLUMN     "startDate" TIMESTAMP(3),

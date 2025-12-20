@@ -1,6 +1,8 @@
 import React, { useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents } from "react-leaflet";
 import L from "leaflet";
+import { createDestinationMarkers, createStartEndMarkers } from "../../utils/mapUtils.jsx";
+
 
 // Fix Leaflet marker icons for bundlers (Vite/Webpack)
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -14,9 +16,10 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-export default function MapRoute({ value = {}, onChange }) {
+export default function MapRoute({ value = {}, onChange, noPanel = false, errors = {} }) {
   const location = value.location ?? null;   // { lat, lng }
   const route = value.points ?? [];           // [[lat, lng], ...]
+  const getError = (field) => errors[field];
 
   const center = useMemo(() => {
     if (location?.lat && location?.lng) {
@@ -52,9 +55,9 @@ export default function MapRoute({ value = {}, onChange }) {
     });
   }
 
-  return (
-    <div className="panel">
-      <h3>Map & Route</h3>
+  const content = (
+    <>
+      {!noPanel && <h3>Map & Route</h3>}
 
       {/* Map container MUST have height */}
       <div style={{ height: 420, width: "100%", borderRadius: 12, overflow: "hidden" }}>
@@ -70,17 +73,12 @@ export default function MapRoute({ value = {}, onChange }) {
 
           <MapClickHandler onClick={handleMapClick} />
 
-          {location && (
-            <Marker position={[location.lat, location.lng]} />
-          )}
-
           {route.length > 1 && (
-            <Polyline positions={route} />
+            <Polyline positions={route} color="#2d6a4f" weight={4} opacity={0.8} />
           )}
 
-          {route.map((p, i) => (
-            <Marker key={i} position={p} />
-          ))}
+          {route.length > 0 && createStartEndMarkers(route)}
+          {route.length > 0 && createDestinationMarkers(route)}
         </MapContainer>
       </div>
 
@@ -98,6 +96,14 @@ export default function MapRoute({ value = {}, onChange }) {
         Click the map to add route points. First click sets the hike location.
       </div>
 
+      {/* Error messages */}
+      {(errors?.points || errors?.location) && (
+        <div className="map-errors">
+          {errors.points && <div className="field-error">{errors.points}</div>}
+          {errors.location && <div className="field-error">{errors.location}</div>}
+        </div>
+      )}
+
       {/* Debug info (safe to keep or remove later) */}
       <div style={{ marginTop: 8, fontSize: 12, color: "#555" }}>
         <div>
@@ -110,6 +116,12 @@ export default function MapRoute({ value = {}, onChange }) {
           <b>Route points:</b> {route.length}
         </div>
       </div>
+    </>
+  );
+
+  return noPanel ? content : (
+    <div className="panel">
+      {content}
     </div>
   );
 }
