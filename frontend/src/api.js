@@ -3,7 +3,7 @@ import axios from "axios";
 import { auth } from "./firebase";
 
 const api = axios.create({
-  baseURL: "http://localhost:3000", // backend
+  baseURL: "/api", // backend
 });
 
 // Attach Firebase ID token (if logged in) to all requests
