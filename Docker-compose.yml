@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:16
+    container_name: trailhub-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trailhub
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: trailhub_db
+    volumes:
+      - trailhub_db:/var/lib/postgresql/data
+    networks:
+      - trailhub
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: trailhub-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      # IMPORTANT: backend inside docker must connect to db via service name "db"
+      DATABASE_URL: postgresql://trailhub:secret@db:5432/trailhub_db?schema=public
+    depends_on:
+      - db
+    volumes:
+      # persistent uploads
+      - trailhub_uploads:/app/uploads
+      # Mount hikes uploads directory
+      - trailhub_hikes_uploads:/app/src/modules/hikes/uploads
+    networks:
+      - trailhub
+    # Backend is not exposed publicly - only accessible via web container
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: trailhub-web
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      # expose only to localhost; host nginx will proxy to it
+      - "127.0.0.1:8080:80"
+    networks:
+      - trailhub
+
+volumes:
+  trailhub_db:
+  trailhub_uploads:
+  trailhub_hikes_uploads:
+
+networks:
+  trailhub:

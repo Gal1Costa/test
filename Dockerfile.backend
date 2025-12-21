@@ -1,0 +1,29 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install dependencies first (better caching)
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+# Copy Prisma schema and migrations (needed for generate and migrate)
+COPY prisma ./prisma
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Copy the rest of the application
+COPY . .
+
+# Create uploads directories
+RUN mkdir -p /app/uploads /app/src/modules/hikes/uploads
+
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/healthz', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Run migrations then start backend
+# migrate deploy is safe for production (only runs pending migrations)
+CMD sh -c "npx prisma migrate deploy && node src/app/index.js"
