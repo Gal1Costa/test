@@ -100,7 +100,13 @@ async function updateHike(id, data) {
 }
 
 async function deleteHike(id) {
-  return prisma.hike.delete({ where: { id } });
+  await prisma.booking.deleteMany({
+    where: { hikeId: id }
+  });
+
+  return prisma.hike.delete({
+    where: { id }
+  });
 }
 
 module.exports = {
