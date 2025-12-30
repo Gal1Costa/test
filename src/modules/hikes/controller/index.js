@@ -1,4 +1,5 @@
 /* eslint-disable */
+//src/modules/hikes/controller/index.js
 const { Router } = require('express');
 const multer = require('multer');
 const fs = require('fs');
@@ -62,6 +63,64 @@ function readRouteFile(routePath) {
   }
 }
 
+/**
+ * Read route data from either a URL (Spaces CDN) or local file path.
+ * @param {string} routePath - Either a URL (https://...) or local path
+ * @returns {Promise<Object|null>} Route data or null
+ */
+async function readRouteAny(routePath) {
+  if (!routePath) return null;
+
+  // If it's a URL (Spaces CDN), fetch it
+  if (/^https?:\/\//i.test(routePath)) {
+    try {
+      const r = await fetch(routePath);
+      if (!r.ok) return null;
+      return await r.json();
+    } catch {
+      return null;
+    }
+  }
+
+  // Else local path
+  return readRouteFile(routePath);
+}
+
+/**
+ * Save route JSON to Spaces storage (if available) or fallback to local file.
+ * @param {Object} params
+ * @param {string} params.hikeId - Hike ID
+ * @param {Object|null} params.mapLocation - Map location data
+ * @param {Array} params.points - Route points array
+ * @param {Object|null} params.storageAdapter - Spaces storage adapter (or null)
+ * @returns {Promise<string>} URL or local path
+ */
+async function saveRouteToStorage({ hikeId, mapLocation, points, storageAdapter }) {
+  const payload = {
+    version: 1,
+    hikeId,
+    savedAt: new Date().toISOString(),
+    mapLocation: mapLocation ?? null,
+    points: Array.isArray(points) ? points : [],
+  };
+
+  const key = `routes/${hikeId}.json`;
+  const buf = Buffer.from(JSON.stringify(payload, null, 2), "utf-8");
+
+  // If adapter works, store in Spaces
+  if (storageAdapter?.uploadObject) {
+    try {
+      const uploaded = await storageAdapter.uploadObject(key, buf, "application/json");
+      if (uploaded?.url) return uploaded.url; // store CDN URL in DB
+    } catch (e) {
+      console.warn("[routes] upload to storage failed, fallback to local:", e.message || e);
+    }
+  }
+
+  // fallback local
+  return saveRouteFile({ hikeId, mapLocation, points });
+}
+
 function haversineKm(a, b) {
   const R = 6371; // km
   const toRad = (x) => (x * Math.PI) / 180;
@@ -107,7 +166,7 @@ router.get('/:id', async (req, res, next) => {
     const row = await repo.getHikeById(req.params.id);
     if (!row) return send404(res);
 
-    const routeData = readRouteFile(row.routePath);
+    const routeData = await readRouteAny(row.routePath);
     const route = routeData?.points ?? [];
     const mapLocation = routeData?.mapLocation ?? null;
 
@@ -143,12 +202,12 @@ router.post('/', upload.fields([{ name: 'cover' }]), async (req, res, next) => {
       
     };
 
-    // Handle cover upload (Firebase or whatever adapter you use)
+    // Handle cover upload (Spaces preferred, Firebase fallback)
     const adapters = req.app?.locals?.adapters || {};
     await handleFileUploads({
       files: req.files,
       data,
-      storageAdapter: adapters.firebaseStorage,
+      storageAdapter: adapters.spacesStorage || adapters.firebaseStorage,
     });
 
     // Resolve guide from current user
@@ -176,10 +235,15 @@ router.post('/', upload.fields([{ name: 'cover' }]), async (req, res, next) => {
     // Create hike in DB
     const created = await repo.createHike(data);
 
-    // Save route JSON to src/modules/hikes/uploads/routes/<hikeId>.json and store routePath in DB
+    // Save route JSON to Spaces (or local fallback) and store routePath in DB
     let routePath = null;
     if (Array.isArray(routePoints) && routePoints.length > 0) {
-      routePath = saveRouteFile({ hikeId: created.id, mapLocation, points: routePoints });
+      routePath = await saveRouteToStorage({
+        hikeId: created.id,
+        mapLocation,
+        points: routePoints,
+        storageAdapter: adapters.spacesStorage || null,
+      });
 
       if (repo?.updateHike) {
         await repo.updateHike(created.id, { routePath });
@@ -226,12 +290,12 @@ router.put('/:id', upload.fields([{ name: 'cover' }]), async (req, res, next) =>
     if (body.whatToBring !== undefined) data.whatToBring = body.whatToBring || null;
     if (body.location) data.location = body.location;
 
-    // Handle cover upload
+    // Handle cover upload (Spaces preferred, Firebase fallback)
     const adapters = req.app?.locals?.adapters || {};
     await handleFileUploads({
       files: req.files,
       data,
-      storageAdapter: adapters.firebaseStorage,
+      storageAdapter: adapters.spacesStorage || adapters.firebaseStorage,
     });
 
     // Verify ownership
@@ -257,13 +321,18 @@ router.put('/:id', upload.fields([{ name: 'cover' }]), async (req, res, next) =>
 
     // If route was provided, save/overwrite route file and store routePath
     if (Array.isArray(routePoints) && routePoints.length > 0) {
-      const routePath = saveRouteFile({ hikeId: req.params.id, mapLocation, points: routePoints });
+      const routePath = await saveRouteToStorage({
+        hikeId: req.params.id,
+        mapLocation,
+        points: routePoints,
+        storageAdapter: adapters.spacesStorage || null,
+      });
       const updated2 = await repo.updateHike(req.params.id, { routePath });
       return res.json({ ...updated2, route: routePoints, mapLocation: mapLocation ?? null });
     }
 
     // Otherwise, include existing route if there is one
-    const routeData = readRouteFile(updated.routePath);
+    const routeData = await readRouteAny(updated.routePath);
     return res.json({
       ...updated,
       route: routeData?.points ?? [],
