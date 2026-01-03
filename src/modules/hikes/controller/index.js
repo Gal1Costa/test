@@ -151,12 +151,29 @@ function totalRouteKm(points) {
 /* ------------------- HIKES ------------------- */
 
 // GET /api/hikes
-router.get('/', async (_req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
     if (!repo?.listHikes) return send501(res, 'listHikes not implemented');
-    const data = await repo.listHikes();
+
+    const filters = {
+      search: req.query.search,
+      difficulty: req.query.difficulty,
+      dateFrom: req.query.dateFrom ? new Date(req.query.dateFrom) : undefined,
+      dateTo: req.query.dateTo ? new Date(req.query.dateTo) : undefined,
+      priceFrom: req.query.priceFrom !== undefined ? Number(req.query.priceFrom) : undefined,
+      priceTo: req.query.priceTo !== undefined ? Number(req.query.priceTo) : undefined,
+      location: req.query.location,
+    };
+
+    // optional: clean NaN
+    if (Number.isNaN(filters.priceFrom)) delete filters.priceFrom;
+    if (Number.isNaN(filters.priceTo)) delete filters.priceTo;
+
+    const data = await repo.listHikes(filters);
     res.json(data);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /api/hikes/:id  (includes route + mapLocation loaded from file)
