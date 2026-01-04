@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  name         String?
+  role         String
+  // legacy column — MUST remain to prevent Prisma from dropping it
+  status       String?       @map("status")
+  isDeleted    Boolean       @default(false)
+  deletedAt    DateTime?
+  anonymizedAt DateTime?
+  createdAt    DateTime      @default(now())
+  firebaseUid  String?       @unique
+  bookings     Booking[]
+  guide        Guide?
+  hikerProfile HikerProfile?
+  reviews      Review[]
+}
+
+
+model Guide {
+  id              String    @id @default(uuid())
+  // legacy status — DO NOT remove or rename
+  status          String
+  userId          String    @unique
+  bio             String?
+  createdAt       DateTime  @default(now())
+  photoUrl        String?
+  displayName     String?
+  languages       String[]
+  yearsExperience Int?
+  isVerified      Boolean   @default(false)
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  profileSlug     String?
+  isFeatured      Boolean   @default(false)
+  updatedAt       DateTime  @updatedAt
+  location        String?
+  user            User      @relation(fields: [userId], references: [id])
+  hikes           Hike[]
+  reviews         Review[]
+}
+
+model HikerProfile {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  bio                 String?
+  displayName         String?
+  interests           String[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  location            String?
+  emergencyContact    String?
+  fitnessLevel        String?
+  medicalInfo         String?
+  photoUrl            String?
+  preferredDifficulty String[]
+  user                User     @relation(fields: [userId], references: [id])
+}
+
+model Hike {
+  id            String          @id @default(uuid())
+  // legacy status — DO NOT remove or rename
+  status        String
+  title         String
+  description   String?
+  difficulty    DifficultyLevel
+  distance      String?
+  duration      String?
+  price         Int?
+  capacity      Int?
+  location      String?
+  date          DateTime?
+  meetingTime   String?
+  meetingPlace  String?
+  elevationGain String?
+  whatToBring   String?
+  routePath     String?
+  coverUrl      String?
+  isCancelled   Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  guideId       String
+  bookings      Booking[]
+  reviews       Review[]
+  guide         Guide           @relation(fields: [guideId], references: [id], onDelete: Cascade)
+}
+
+model Booking {
+  id        String   @id @default(uuid())
+  userId    String
+  hikeId    String
+  status    String
+  createdAt DateTime @default(now())
+  hike      Hike     @relation(fields: [hikeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  guideId   String
+  hikeId    String
+  tags      String[]
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  guide     Guide    @relation(fields: [guideId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  hike      Hike     @relation(fields: [hikeId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String?  // user id who performed the action (nullable for system)
+  actorEmail String?
+  action    String
+  resource  String?
+  resourceId String?
+  details   String?
+  createdAt DateTime @default(now())
+}
+
+enum DifficultyLevel {
+  EASY
+  MODERATE
+  HARD
+}

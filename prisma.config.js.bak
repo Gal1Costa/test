@@ -1,0 +1,11 @@
+// prisma.config.js (CommonJS)
+const path = require('path');
+
+// Load the env that sits NEXT TO the schema (prisma/.env)
+require('dotenv').config({ path: path.resolve(__dirname, 'prisma/.env') });
+
+// Point Prisma explicitly at your schema file
+const { defineConfig } = require('prisma');
+module.exports = defineConfig({
+  schema: 'prisma/schema.prisma',
+});
