@@ -39,21 +39,74 @@ function mapHike(hike) {
   };
 }
 
-// List hikes for Explore page
-async function listHikes() {
+// List hikes for Explore page (with filters)
+async function listHikes(filters = {}) {
+  console.log("🔥 FILTER LOGIC LOADED");
+  const { search, difficulty, dateFrom, dateTo, priceFrom, priceTo, location } = filters;
+
+  const and = [];
+
+  // Difficulty enum: EASY / MODERATE / HARD
+  if (difficulty) {
+    const diff = String(difficulty).toLowerCase();
+    const enumValue =
+      diff === "easy" ? "EASY" :
+      diff === "moderate" ? "MODERATE" :
+      diff === "hard" ? "HARD" :
+      null;
+
+    if (enumValue) and.push({ difficulty: enumValue });
+  }
+
+  // Price range
+  if (priceFrom !== undefined && priceFrom !== null) and.push({ price: { gte: priceFrom } });
+  if (priceTo !== undefined && priceTo !== null) and.push({ price: { lte: priceTo } });
+
+  // Date range (hike.date)
+  if (dateFrom) and.push({ date: { gte: dateFrom } });
+  if (dateTo) and.push({ date: { lte: dateTo } });
+
+  // Search: matches anything containing input across multiple fields
+  if (search && String(search).trim()) {
+    const q = String(search).trim();
+    and.push({
+      OR: [
+        { title: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+        { location: { contains: q, mode: "insensitive" } },
+        { meetingPlace: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  // Location filter: must match location OR meetingPlace OR title
+  if (location && String(location).trim()) {
+    const q = String(location).trim();
+    and.push({
+      OR: [
+        { location: { contains: q, mode: "insensitive" } },
+        { meetingPlace: { contains: q, mode: "insensitive" } },
+        { title: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  const where = and.length ? { AND: and } : {};
+
+  console.log("🧪 filters:", filters);
+  console.log("🧪 prisma where:", JSON.stringify(where, null, 2));
+
+
   const rows = await prisma.hike.findMany({
-    orderBy: { createdAt: 'desc' },
+    where,
+    orderBy: { createdAt: "desc" },
     include: {
-      guide: {
-        include: { user: true },
-      },
-      _count: {
-        select: { bookings: true },
-      },
+      guide: { include: { user: true } },
+      _count: { select: { bookings: true } },
     },
   });
 
-  // prisma gives `_count.bookings`, we normalize in mapHike
+  // always return normalized shape
   return rows.map((h) =>
     mapHike({
       ...h,
@@ -61,6 +114,7 @@ async function listHikes() {
     })
   );
 }
+
 
 // Single hike details
 async function getHikeById(id) {
