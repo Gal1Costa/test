@@ -20,7 +20,20 @@ function App() {
   const [user, setUser] = useState(auth.currentUser);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      
+      // If user is signed in, verify their account is not deleted
+      if (u) {
+        try {
+          const api = (await import('./api')).default;
+          await api.get('/me');
+        } catch (error) {
+          // The axios interceptor will handle the sign-out and redirect
+          // if the account is deleted (401 + "Account deleted")
+        }
+      }
+    });
     return () => unsub();
   }, []);
 

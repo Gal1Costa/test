@@ -25,4 +25,36 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Response interceptor to handle deleted accounts
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    // Check if the error is "Account deleted"
+    if (error?.response?.status === 401 && 
+        error?.response?.data?.error === 'Account deleted') {
+      try {
+        // Sign out the user
+        await auth.signOut();
+        
+        // Show a message to the user
+        window.dispatchEvent(new CustomEvent('app:toast', { 
+          detail: { 
+            message: 'Your account has been deleted. You have been signed out.', 
+            type: 'error' 
+          } 
+        }));
+        
+        // Redirect to home page
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
+      } catch (signOutError) {
+        console.error('Failed to sign out deleted user:', signOutError);
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
 export default api;
