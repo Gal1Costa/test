@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:16
+    container_name: trailhub-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trailhub
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: trailhub_db
+    volumes:
+      - trailhub_db:/var/lib/postgresql/data
+    ports:  
+      - "5432:5432"  
+    networks:
+      - trailhub
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend  
+    container_name: trailhub-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      DATABASE_URL: postgresql://trailhub:secret@db:5432/trailhub_db?schema=public
+    depends_on:
+      - db
+    networks:
+      - trailhub
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: trailhub-web
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:8080:80"
+    networks:
+      - trailhub
+
+volumes:
+  trailhub_db:
+
+networks:
+  trailhub:
