@@ -26,7 +26,7 @@ if (process.env.NODE_ENV === 'development') {
 // other module routers can be mounted similarly when ready
 // e.g. router.use('/api/bookings', require('../modules/bookings/controller'));
 
-// Backwards-compatible profile endpoints used by frontend
+// Backwards-compatible profile endpoint (legacy - /api/me is now handled by me controller)
 const usersRepo = require('../modules/users/repository');
 
 async function handleProfile(req, res, next) {
@@ -43,7 +43,7 @@ async function handleProfile(req, res, next) {
   }
 }
 
-router.get('/api/me', handleProfile);
+// Legacy /api/profile endpoint (kept for backwards compatibility)
 router.get('/api/profile', handleProfile);
 
 module.exports = router;

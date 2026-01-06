@@ -23,14 +23,19 @@ export default function ReviewList({ guideId, userId, hikeId, title = "Reviews" 
       } else if (hikeId) {
         endpoint = `/reviews/hike/${hikeId}`;
       } else {
-        throw new Error('Must provide guideId, userId, or hikeId');
+        // Don't show error if no ID provided - just return empty
+        setReviews([]);
+        setLoading(false);
+        return;
       }
 
       const res = await api.get(endpoint);
-      setReviews(res.data || []);
+      setReviews(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error('Failed to load reviews', e);
-      setError(e?.response?.data?.error || 'Failed to load reviews');
+      const errorMsg = e?.response?.data?.error || e?.message || 'Failed to load reviews';
+      setError(errorMsg);
+      setReviews([]); // Set empty array on error
     } finally {
       setLoading(false);
     }

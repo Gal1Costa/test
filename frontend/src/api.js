@@ -14,17 +14,6 @@ api.interceptors.request.use(
     const user = auth.currentUser;
 
     config.headers = config.headers || {};
-    
-    // Dev convenience: when `localStorage.dev_user` is present, send it as x-dev-user
-    // so the backend (when in dev mode) can accept a dev user for local testing
-    try {
-      const devUserJson = typeof window !== 'undefined' && window.localStorage && window.localStorage.getItem('dev_user');
-      if (devUserJson) {
-        config.headers['x-dev-user'] = devUserJson;
-      }
-    } catch (e) {
-      // ignore localStorage errors
-    }
 
     // Attach Firebase ID token when available (production flow)
     if (user) {
@@ -40,6 +29,7 @@ api.interceptors.request.use(
 export default api;
 
 // Helper: delete current authenticated user (frontend convenience)
+// Used by admin features for user management
 async function deleteMe() {
   try {
     const res = await api.delete('/me');

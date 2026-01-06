@@ -202,7 +202,10 @@ async function getCurrentUserProfile(firebaseUid, userInfo = null) {
     bookings,
     ...(user.role === "hiker" && { hikerProfile }),
     ...(user.role === "guide" && {
-      guide: guideProfile,
+      guide: guideProfile ? {
+        ...guideProfile,
+        id: guideProfile.id, // Ensure id is explicitly set
+      } : null,
       createdHikes: createdHikes.map((h) => ({ ...h, participantsCount: h._count?.bookings ?? 0 })),
     }),
   };

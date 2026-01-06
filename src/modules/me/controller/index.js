@@ -1,8 +1,22 @@
 const { Router } = require('express');
 const { requireRole } = require('../../../app/roles.middleware');
 const { prisma } = require('../../../shared/prisma');
+const usersRepo = require('../../users/repository');
 
 const router = Router();
+
+// GET /api/me - return current user's profile
+router.get('/', async (req, res, next) => {
+  try {
+    const firebaseUid = req.user?.firebaseUid || req.user?.id || null;
+    const userInfo = req.user ? { email: req.user.email, name: req.user.name, role: req.user.role } : null;
+    const profile = await usersRepo.getCurrentUserProfile(firebaseUid, userInfo);
+    return res.json(profile);
+  } catch (err) {
+    console.error('[me] Error fetching profile:', err);
+    next(err);
+  }
+});
 
 // DELETE /api/me - soft-delete current authenticated user
 router.delete('/', requireRole(['hiker','guide','admin']), async (req, res, next) => {

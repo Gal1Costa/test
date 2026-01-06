@@ -61,6 +61,7 @@ export default function GuideProfile() {
         const res = await api.get(`/guides/${String(stateGuideId)}`);
         const g = res.data;
         // Normalize guide response into the shape this component expects
+        console.log('[GuideProfile] Guide API response (g):', g);
         profile = {
           id: g.user?.id || g.id,
           email: g.user?.email,
@@ -68,11 +69,12 @@ export default function GuideProfile() {
           role: 'guide',
           guide: {
             ...g,
-            id: g.id || (g.user && g.user.guide && g.user.guide.id) || null,
+            id: g.id, // Guide ID from the API response - should always be present
           },
           createdHikes: g.hikes || g.createdHikes || [],
           bookings: g.bookings || [],
         };
+        console.log('[GuideProfile] Profile constructed with guide.id:', profile.guide?.id);
         
         // Check if current user is the owner of this guide profile
         const isOwner = currentUserProfile && (
@@ -96,7 +98,7 @@ export default function GuideProfile() {
               role: 'guide',
               guide: {
                 ...g,
-                id: g.id || (g.user && g.user.guide && g.user.guide.id) || null,
+                id: g.id, // Guide ID from the API response - should always be present
               },
               createdHikes: g.hikes || g.createdHikes || [],
               bookings: g.bookings || [],
@@ -133,20 +135,22 @@ export default function GuideProfile() {
 
           if (guideIdCandidate) {
             try {
-              const guideRes = await api.get(`/guides/${String(guideIdCandidate)}`);
-              const g = guideRes.data;
-              profile = {
-                id: g.user?.id || g.id,
-                email: g.user?.email,
-                name: g.user?.name || g.name,
-                role: 'guide',
-                guide: {
-                  ...g,
-                  id: g.id || (g.user && g.user.guide && g.user.guide.id) || null,
-                },
-                createdHikes: g.hikes || g.createdHikes || [],
-                bookings: g.bookings || [],
-              };
+            const guideRes = await api.get(`/guides/${String(guideIdCandidate)}`);
+            const g = guideRes.data;
+            console.log('[GuideProfile] Guide API response (g) for own profile:', g);
+            profile = {
+              id: g.user?.id || g.id,
+              email: g.user?.email,
+              name: g.user?.name || g.name,
+              role: 'guide',
+              guide: {
+                ...g,
+                id: g.id, // Guide ID from the API response - should always be present
+              },
+              createdHikes: g.hikes || g.createdHikes || [],
+              bookings: g.bookings || [],
+            };
+            console.log('[GuideProfile] Profile constructed with guide.id:', profile.guide?.id);
               setIsPublicView(false);
             } catch (innerErr) {
               // If fetching guide endpoint fails, fall back to /api/me response
@@ -170,7 +174,14 @@ export default function GuideProfile() {
         return;
       }
 
-      console.log('[GuideProfile] Loaded profile:', { id: profile.id, email: profile.email, name: profile.name, role: profile.role });
+      console.log('[GuideProfile] Loaded profile:', { 
+        id: profile.id, 
+        email: profile.email, 
+        name: profile.name, 
+        role: profile.role,
+        guideId: profile.guide?.id,
+        guide: profile.guide 
+      });
       setMe(profile);
 
       const now = new Date();
@@ -236,15 +247,17 @@ export default function GuideProfile() {
 
   const counts = useMemo(
     () => {
-      const createdHikes = (upcoming || []).filter(h => h.isCreated).concat((past || []).filter(h => h.isCreated));
-      const upcomingJoined = (upcoming || []).filter(h => !h.isCreated);
+      const upcomingArr = Array.isArray(upcoming) ? upcoming : [];
+      const pastArr = Array.isArray(past) ? past : [];
+      const createdHikes = upcomingArr.filter(h => h.isCreated).concat(pastArr.filter(h => h.isCreated));
+      const upcomingJoined = upcomingArr.filter(h => !h.isCreated);
 
       return {
-        total: (upcoming?.length || 0) + (past?.length || 0),
+        total: (Array.isArray(upcoming) ? upcoming.length : 0) + (Array.isArray(past) ? past.length : 0),
         created: createdHikes.length,
         joined: upcomingJoined.length, // only upcoming joined hikes
-        upcoming: upcoming?.length || 0,
-        completed: past?.length || 0,
+        upcoming: Array.isArray(upcoming) ? upcoming.length : 0,
+        completed: Array.isArray(past) ? past.length : 0,
       };
     },
     [upcoming, past]
@@ -374,7 +387,8 @@ export default function GuideProfile() {
         <div className="hikes-section">
           <h2 className="section-title">Upcoming Created Hikes</h2>
           {(() => {
-            const createdUpcoming = upcoming.filter(h => h.isCreated);
+            const upcomingArr = Array.isArray(upcoming) ? upcoming : [];
+            const createdUpcoming = upcomingArr.filter(h => h.isCreated);
             if (createdUpcoming.length === 0) {
               return (
                 <div className="empty-state">
@@ -413,7 +427,8 @@ export default function GuideProfile() {
         <div className="hikes-section">
           <h2 className="section-title">Upcoming Joined Hikes</h2>
           {(() => {
-            const joinedUpcoming = upcoming.filter(h => !h.isCreated);
+            const upcomingArr = Array.isArray(upcoming) ? upcoming : [];
+            const joinedUpcoming = upcomingArr.filter(h => !h.isCreated);
             if (joinedUpcoming.length === 0) {
               return (
                 <div className="empty-state">
@@ -470,13 +485,13 @@ export default function GuideProfile() {
           </div>
 
           {completedView === 'created' ? (
-            (past || []).filter(h => h.isCreated).length === 0 ? (
+            (Array.isArray(past) ? past : []).filter(h => h.isCreated).length === 0 ? (
               <div className="empty-state">
                 <p>No completed created hikes yet.</p>
               </div>
             ) : (
               <div className="hikes-list">
-                {(past || []).filter(h => h.isCreated).map((h) => (
+                {(Array.isArray(past) ? past : []).filter(h => h.isCreated).map((h) => (
                   <HikeCard
                     key={h.id}
                     hike={h}
@@ -490,13 +505,13 @@ export default function GuideProfile() {
               </div>
             )
           ) : (
-            (past || []).filter(h => !h.isCreated).length === 0 ? (
+            (Array.isArray(past) ? past : []).filter(h => !h.isCreated).length === 0 ? (
               <div className="empty-state">
                 <p>No completed joined hikes yet.</p>
               </div>
             ) : (
               <div className="hikes-list">
-                {(past || []).filter(h => !h.isCreated).map((h) => (
+                {(Array.isArray(past) ? past : []).filter(h => !h.isCreated).map((h) => (
                   <HikeCard
                     key={h.id}
                     hike={h}
@@ -514,9 +529,29 @@ export default function GuideProfile() {
       ) : null}
 
       {/* Reviews Section */}
-      <div className="reviews-section-container" style={{ marginTop: '24px' }}>
-        <ReviewList guideId={me.guide?.id} title="Reviews for this Guide" />
-      </div>
+      {(() => {
+        // Get the guide ID from the profile being viewed
+        // The guide ID should be in me.guide.id when viewing a guide profile
+        const guideId = me?.guide?.id;
+        
+        console.log('[GuideProfile] Reviews section - me:', me, 'guideId:', guideId);
+        
+        if (guideId) {
+          return (
+            <div className="reviews-section-container" style={{ marginTop: '24px' }}>
+              <ReviewList guideId={guideId} title="Reviews for this Guide" />
+            </div>
+          );
+        } else {
+          return (
+            <div className="reviews-section-container" style={{ marginTop: '24px' }}>
+              <div style={{ color: '#666', fontStyle: 'italic' }}>
+                Unable to load reviews: Guide ID not found. Debug: me.guide = {JSON.stringify(me?.guide)}
+              </div>
+            </div>
+          );
+        }
+      })()}
 
       {/* Edit Profile Modal */}
       <EditProfileModal

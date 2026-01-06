@@ -27,6 +27,7 @@ const chatGateway = require('../modules/chat/gateway');    // Real-time chat
 // External services (stubs for now - not implemented yet)
 const firebaseAuth = require('../adapters/firebase.auth');       // User login
 const firebaseStorage = require('../adapters/firebase.storage'); // File storage
+const spacesStorage = require('../adapters/spaces.storage');     // DigitalOcean Spaces storage
 const maps = require('../adapters/maps.adapter');                // Maps and geocoding
 const payments = require('../adapters/payments.adapter');        // Payment processing
 
@@ -41,9 +42,24 @@ function createApp() {
   const app = express();
 
   // Allow web browsers to connect to our API
+  // Support both development (Vite on 5173) and Docker (nginx on 8080)
+  const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+    : ['http://localhost:5173', 'http://localhost:8080'];
+  
   app.use(
     cors({
-      origin: 'http://localhost:5173',
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, Postman, curl)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
+      credentials: true,
     })
   );
 
@@ -68,19 +84,15 @@ function createApp() {
   // Make external services available to other parts of the app
   app.locals.adapters = {
     firebaseAuth, // For checking user login
-    firebaseStorage, // For storing photos/files
+    firebaseStorage, // For storing photos/files (fallback)
+    spacesStorage, // For storing photos/files in DigitalOcean Spaces
     maps, // For geocoding and maps
     payments, // For processing payments
   };
 
-  // Serve uploads directory (local fallback storage)
-  // Serve hikes module uploads (covers etc.)
-  const fs = require('fs');
-  const hikesUploadsDir = path.join(__dirname, '../modules/hikes/uploads');
-  try { if (!fs.existsSync(hikesUploadsDir)) fs.mkdirSync(hikesUploadsDir, { recursive: true }); } catch (e) { /* ignore */ }
-  app.use('/hikes', express.static(hikesUploadsDir));
-
-  app.use('/hikes/uploads', express.static(path.join(__dirname, '..', 'modules', 'hikes', 'uploads')));
+  // Serve uploads directory (local fallback storage - only used when Spaces isn't configured)
+  // Folders are auto-created by uploadHandler.js and controller when needed
+  app.use('/hikes', express.static(path.join(__dirname, '..', 'modules', 'hikes', 'uploads')));
 
 
   // Check if user is logged in on every request
