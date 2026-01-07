@@ -39,6 +39,15 @@ router.post('/register', async (req, res, next) => {
       return res.status(400).json({ error: 'firebaseUid and email are required' });
     }
 
+    // SECURITY: Block admin UIDs from registration (single source of truth)
+    const { isAdmin } = require('../../../utils/admin');
+    if (isAdmin(firebaseUid)) {
+      return res.status(403).json({ 
+        error: 'AdminUidBlocked',
+        message: 'This account is registered as an administrator and cannot be registered through this endpoint.'
+      });
+    }
+
     // Validate role
     const validRoles = ['hiker', 'guide'];
     const userRole = validRoles.includes(role) ? role : 'hiker';
@@ -148,7 +157,9 @@ router.get('/:id', requireRole(['hiker','guide','admin']), async (req, res, next
       bookings,
     };
 
-    const isAdmin = requester && requester.role === 'admin';
+    // Admin check: use isAdmin utility (single source of truth)
+    const { isAdmin: checkIsAdmin } = require('../../../utils/admin');
+    const isAdmin = requester && checkIsAdmin(requester.firebaseUid);
     const isOwner = requester && requester.firebaseUid && requester.firebaseUid === user.firebaseUid;
 
     // Hide sensitive fields for non-owners (e.g. email, firebaseUid)

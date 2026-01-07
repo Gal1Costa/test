@@ -13,6 +13,8 @@ router.use('/api/admin/analytics', require('../modules/analytics/controller'));
 router.use('/api/identity', require('../modules/identity/controller'));
 // mount /api/me controller for self-operations
 router.use('/api/me', require('../modules/me/controller'));
+// mount /api/auth for auth-related endpoints
+router.use('/api/auth', require('../modules/auth/controller'));
 
 // Mount dev-only routes (only in development)
 if (process.env.NODE_ENV === 'development') {

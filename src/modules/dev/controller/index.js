@@ -3,17 +3,16 @@ const { Router } = require('express');
 const { prisma } = require('../../../shared/prisma');
 
 function getAdminAllowlist() {
-  const raw = process.env.ADMIN_EMAILS;
-  if (!raw) return [];
+  const raw = process.env.ADMIN_UIDS || "";
   return raw
     .split(',')
-    .map((e) => e.trim().toLowerCase())
+    .map((uid) => uid.trim())
     .filter(Boolean);
 }
 
-function isAdminEmail(email) {
-  if (!email) return false;
-  return getAdminAllowlist().includes(String(email).toLowerCase());
+function isAdminUid(firebaseUid) {
+  if (!firebaseUid) return false;
+  return getAdminAllowlist().includes(String(firebaseUid).trim());
 }
 
 const router = Router();

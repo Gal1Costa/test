@@ -24,11 +24,8 @@ async function getOrCreateDemoUser() {
 
 /**
  * Create or update a user from Firebase auth data.
- * SAFETY RULES:
- * - Never grant admin here.
- * - Only allow role to be hiker/guide from client.
- * - If existing user is admin, never change role.
- * - If status is DELETED, refuse.
+ * NOTE: Admin status is determined by ADMIN_UIDS env var, not here.
+ * This function only handles hiker/guide roles from client registration.
  */
 async function createOrUpdateUser({ firebaseUid, email, name, role = "hiker" }) {
   if (!firebaseUid || !email) throw new Error("firebaseUid and email are required");
@@ -46,8 +43,8 @@ async function createOrUpdateUser({ firebaseUid, email, name, role = "hiker" }) 
       throw err;
     }
 
-    // Never change admins here
-    const nextRole = existing.role === "admin" ? "admin" : requestedRole;
+    // Use requested role (admin status is handled by auth middleware)
+    const nextRole = requestedRole;
 
     const updated = await prisma.user.update({
       where: { id: existing.id },
@@ -61,7 +58,7 @@ async function createOrUpdateUser({ firebaseUid, email, name, role = "hiker" }) 
     });
 
     // If role changed between guide/hiker, ensure correct profile exists
-    if (existing.role !== "admin" && existing.role !== nextRole) {
+    if (existing.role !== nextRole) {
       if (nextRole === "guide") {
         await prisma.guide.upsert({
           where: { userId: updated.id },

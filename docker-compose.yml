@@ -26,6 +26,7 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
       DATABASE_URL: postgresql://trailhub:secret@db:5432/trailhub_db?schema=public
+      ADMIN_UIDS: ${ADMIN_UIDS:-yPDBrkpp4yfMAeUI7ew1CcgdW823}
     depends_on:
       - db
     networks:

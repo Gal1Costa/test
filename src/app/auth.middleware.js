@@ -2,19 +2,7 @@
 // src/app/auth.middleware.js
 const { verifyIdToken } = require("../adapters/firebase.auth");
 const { prisma } = require("../shared/prisma");
-
-function getAdminAllowlist() {
-  const raw = process.env.ADMIN_EMAILS || "";
-  return raw
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function isAdminEmail(email) {
-  if (!email) return false;
-  return getAdminAllowlist().includes(String(email).toLowerCase());
-}
+const { isAdmin } = require("../utils/admin");
 
 async function ensureNotDeletedByUserRecord(user) {
   if (user && user.status === "DELETED") {
@@ -24,12 +12,10 @@ async function ensureNotDeletedByUserRecord(user) {
 }
 
 /**
- * Auth rules (SAFE + PREDICTABLE):
- * - NEVER trust token claims for role.
- * - NEVER auto-upgrade to admin in middleware.
- * - Admin is TRUE only if (DB.role === 'admin') AND (email is allowlisted).
- * - Optionally demote DB admins whose email is not allowlisted.
- * - x-dev-user is ONLY honored if DEV_AUTH=1.
+ * SIMPLIFIED AUTH RULES:
+ * - Admin status determined SOLELY by ADMIN_UIDS environment variable
+ * - Database role field is just a cache (auto-updated on login)
+ * - x-dev-user is ONLY honored if DEV_AUTH=1
  */
 async function authMiddleware(req, res, next) {
   try {
@@ -46,7 +32,8 @@ async function authMiddleware(req, res, next) {
 
         // dev header may request admin, but we still enforce allowlist
         const requestedRole = parsed.role || "hiker";
-        const role = requestedRole === "admin" && isAdminEmail(email) ? "admin" : "hiker";
+        const firebaseUid = parsed.firebaseUid || null;
+        const role = requestedRole === "admin" && isAdmin(firebaseUid) ? "admin" : "hiker";
 
         // Optional: block deleted users (lookup by id/firebaseUid/email)
         const ors = [
@@ -102,7 +89,12 @@ async function authMiddleware(req, res, next) {
       user = null;
     }
 
-    // Create missing user ALWAYS as hiker
+    const firebaseUid = data.uid;
+
+    // Determine admin status from ADMIN_UIDS (single source of truth)
+    const isUserAdmin = isAdmin(firebaseUid);
+
+    // Create missing user or update existing user
     if (!user) {
       try {
         user = await prisma.user.create({
@@ -110,14 +102,36 @@ async function authMiddleware(req, res, next) {
             firebaseUid: data.uid,
             email,
             name: data.name || null,
-            role: "hiker",
+            role: isUserAdmin ? "admin" : "hiker", // Cache admin status in DB
             status: "ACTIVE",
           },
         });
       } catch (e) {
         // fallback identity if DB create fails
-        req.user = { id: data.uid, firebaseUid: data.uid, email, role: "hiker" };
+        req.user = { 
+          id: data.uid, 
+          firebaseUid: data.uid, 
+          email, 
+          role: isUserAdmin ? "admin" : "hiker" 
+        };
         return next();
+      }
+    } else {
+      // Auto-update DB role cache if admin status changed
+      const currentRole = user.role || "hiker";
+      const shouldBeAdmin = isUserAdmin;
+      const isCurrentlyAdmin = currentRole === "admin";
+
+      if (shouldBeAdmin !== isCurrentlyAdmin) {
+        try {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { role: shouldBeAdmin ? "admin" : "hiker" },
+          });
+          user.role = shouldBeAdmin ? "admin" : "hiker";
+        } catch (e) {
+          // Non-fatal: continue with current role
+        }
       }
     }
 
@@ -125,23 +139,8 @@ async function authMiddleware(req, res, next) {
     const deletedCheck = await ensureNotDeletedByUserRecord(user);
     if (deletedCheck.blocked) return res.status(deletedCheck.response.status).json(deletedCheck.response.body);
 
-    // Compute role safely: admin only if DB role admin AND email allowlisted
-    const allowlisted = isAdminEmail(email);
-    let role = user.role || "hiker";
-
-    if (role === "admin" && !allowlisted) {
-      // Optional demotion to keep DB clean
-      try {
-        await prisma.user.update({ where: { id: user.id }, data: { role: "hiker" } });
-      } catch (e) {}
-      role = "hiker";
-    } else if (role === "admin" && allowlisted) {
-      role = "admin";
-    } else if (role === "guide") {
-      role = "guide";
-    } else {
-      role = "hiker";
-    }
+    // Role is determined by isAdmin() check, DB role is just cache
+    const role = isUserAdmin ? "admin" : (user.role || "hiker");
 
     req.user = {
       id: user.id,
