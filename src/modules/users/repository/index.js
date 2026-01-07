@@ -118,6 +118,16 @@ async function getUserById(userId) {
     include: { hikerProfile: true, guide: true },
   });
   if (!user) return null;
+<<<<<<< HEAD
+=======
+  
+  // Block deleted users
+  if (user.status === "DELETED") {
+    const err = new Error("Account deleted");
+    err.statusCode = 401;
+    throw err;
+  }
+>>>>>>> 82ac34f... Admin features + fixes
 
   let createdHikes = [];
   if (user.role === "guide" && user.guide) {
@@ -141,6 +151,16 @@ async function getCurrentUserProfile(firebaseUid, userInfo = null) {
 
   if (firebaseUid) user = await getUserByFirebaseUid(firebaseUid);
 
+<<<<<<< HEAD
+=======
+  // Check if user is deleted
+  if (user && user.status === "DELETED") {
+    const err = new Error("Account deleted");
+    err.statusCode = 401;
+    throw err;
+  }
+
+>>>>>>> 82ac34f... Admin features + fixes
   // Create user if missing and we have auth info
   if (!user && firebaseUid && userInfo) {
     user = await createOrUpdateUser({
@@ -151,6 +171,16 @@ async function getCurrentUserProfile(firebaseUid, userInfo = null) {
     });
   }
 
+<<<<<<< HEAD
+=======
+  // If firebaseUid exists but user not found and no userInfo, return 404
+  if (!user && firebaseUid) {
+    const err = new Error("User not found in database. Please register first.");
+    err.statusCode = 404;
+    throw err;
+  }
+
+>>>>>>> 82ac34f... Admin features + fixes
   // No firebaseUid => dev-only fallback
   if (!user && !firebaseUid) user = await getOrCreateDemoUser();
 
@@ -160,12 +190,15 @@ async function getCurrentUserProfile(firebaseUid, userInfo = null) {
     throw err;
   }
 
+<<<<<<< HEAD
   if (user.status === "DELETED") {
     const err = new Error("Account deleted");
     err.statusCode = 401;
     throw err;
   }
 
+=======
+>>>>>>> 82ac34f... Admin features + fixes
   const bookings = await prisma.booking.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
