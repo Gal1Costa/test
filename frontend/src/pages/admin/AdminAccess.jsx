@@ -66,6 +66,7 @@ export default function AdminAccess() {
         await auth.currentUser.getIdToken(true);
       }
 
+      // SECURITY: Verify admin status by UID (single source of truth)
       let ok = false;
       try {
         ok = await verifyAdmin();
@@ -82,10 +83,11 @@ export default function AdminAccess() {
       }
 
       if (!ok) {
-        setError(`"${email}" is not an admin account.`);
+        setError('This portal is for administrators only.');
         // IMPORTANT: log them out so they can't land in admin accidentally
         try { await auth.signOut(); } catch (e) {}
         setIsAdmin(false);
+        setLoading(false);
         return;
       }
 

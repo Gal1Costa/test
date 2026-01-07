@@ -125,9 +125,17 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }) {
       if (tab === 'login') {
         await signInWithEmailAndPassword(auth, email, password);
         
-        // Check if account is deleted by making a test API call
+        // SECURITY: Check if logged-in user is admin (by UID) and reject
         try {
-          await api.get('/me');
+          const profileRes = await api.get('/me');
+          const userRole = profileRes?.data?.role;
+          
+          if (userRole === 'admin') {
+            await auth.signOut();
+            setFormError('Administrator accounts cannot login here. Please use the admin portal.');
+            setLoading(false);
+            return;
+          }
         } catch (checkError) {
           // If account is deleted, sign out immediately and show error
           if (checkError?.response?.status === 401 && 
@@ -146,6 +154,27 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }) {
 
       // SIGNUP flow
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // SECURITY: Check if created user's UID is admin and reject
+      try {
+        const profileRes = await api.get('/me');
+        const userRole = profileRes?.data?.role;
+        
+        if (userRole === 'admin') {
+          // Delete the Firebase account we just created
+          await auth.signOut();
+          try {
+            // Note: We can't delete Firebase account from frontend, but backend will reject registration
+            // The account will remain in Firebase but won't be usable
+          } catch (e) {}
+          setFormError('This account is registered as an administrator and cannot be used for registration.');
+          setLoading(false);
+          return;
+        }
+      } catch (checkError) {
+        // If registration check fails, continue with normal flow
+        // Backend will also validate and reject if needed
+      }
 
       // Set Firebase displayName (safe and normal)
       try {
