@@ -28,7 +28,12 @@ router.delete('/', requireRole(['hiker','guide','admin']), async (req, res, next
     const user = await prisma.user.findUnique({ where: { id: authUser.id } });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
+<<<<<<< HEAD
     if (user.isDeleted === true) {
+=======
+    // Check if already deleted using status field
+    if (user.status === 'DELETED') {
+>>>>>>> 82ac34f... Admin features + fixes
       return res.status(410).json({ error: 'User already deleted' });
     }
 
@@ -39,6 +44,10 @@ router.delete('/', requireRole(['hiker','guide','admin']), async (req, res, next
     await prisma.user.update({
       where: { id: user.id },
       data: {
+<<<<<<< HEAD
+=======
+        status: 'DELETED',
+>>>>>>> 82ac34f... Admin features + fixes
         isDeleted: true,
         deletedAt: now,
         anonymizedAt: now,

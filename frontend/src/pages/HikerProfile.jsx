@@ -306,11 +306,26 @@ export default function HikerProfile() {
             await deleteMe();
             try { await auth.signOut(); } catch (e) {}
             try { window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'Account deleted', type: 'success' } })); } catch (e) {}
+<<<<<<< HEAD
             window.location.href = '/';
           } catch (e) {
             console.error('Account deletion failed', e);
             setDeleteError(e?.response?.data?.error || e.message || 'Failed to delete account');
             setDeleteInProgress(false);
+=======
+            window.location.href = '/explore';
+          } catch (e) {
+            console.error('Account deletion failed', e);
+            // If 401 Account deleted, treat as success and sign out
+            if (e?.response?.status === 401 || e?.response?.data?.error === 'Account deleted') {
+              try { await auth.signOut(); } catch (signOutErr) {}
+              try { window.dispatchEvent(new CustomEvent('app:toast', { detail: { message: 'Account deleted', type: 'success' } })); } catch (toastErr) {}
+              window.location.href = '/explore';
+            } else {
+              setDeleteError(e?.response?.data?.error || e.message || 'Failed to delete account');
+              setDeleteInProgress(false);
+            }
+>>>>>>> 82ac34f... Admin features + fixes
           }
         }}
         deleteInProgress={deleteInProgress}

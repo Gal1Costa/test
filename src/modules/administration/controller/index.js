@@ -239,7 +239,46 @@ router.patch('/users/:id', requireRole(['admin']), async (req, res, next) => {
 
     if (Object.keys(data).length === 0) return res.status(400).json({ error: 'No valid fields provided' });
 
+<<<<<<< HEAD
     const updated = await prisma.user.update({ where: { id }, data, select: { id: true, email: true, name: true, role: true, createdAt: true } });
+=======
+    // Get existing user to check if role is changing
+    const existingUser = await prisma.user.findUnique({ where: { id } });
+    if (!existingUser) return res.status(404).json({ error: 'User not found' });
+
+    // Update user
+    const updated = await prisma.user.update({ where: { id }, data, select: { id: true, email: true, name: true, role: true, createdAt: true } });
+    
+    // If role changed, ensure correct profile exists
+    if (data.role && existingUser.role !== data.role) {
+      const newRole = data.role;
+      const displayName = updated.name || existingUser.name || null;
+
+      if (newRole === 'guide') {
+        // Create or ensure Guide profile exists
+        await prisma.guide.upsert({
+          where: { userId: updated.id },
+          update: {},
+          create: { 
+            userId: updated.id, 
+            displayName: displayName, 
+            status: 'ACTIVE' 
+          }
+        });
+      } else if (newRole === 'hiker') {
+        // Create or ensure HikerProfile exists
+        await prisma.hikerProfile.upsert({
+          where: { userId: updated.id },
+          update: {},
+          create: { 
+            userId: updated.id, 
+            displayName: displayName 
+          }
+        });
+      }
+    }
+
+>>>>>>> 82ac34f... Admin features + fixes
     try {
       await recordAudit({ actorId: req.user?.id || null, actorEmail: req.user?.email || null, action: 'update_user', resource: 'user', resourceId: id, details: data });
     } catch (e) {}
