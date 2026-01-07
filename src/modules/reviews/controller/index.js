@@ -61,10 +61,13 @@ router.post('/', requireRole(['hiker','guide','admin']), async (req, res, next) 
 router.get('/guide/:id', requireRole(['visitor','hiker','guide','admin']), async (req, res, next) => {
   try {
     const { id } = req.params;
+    console.log('[reviews/guide] Fetching reviews for guideId:', id);
     const rows = await reviewsRepo.listReviews({ guideId: id });
-    res.status(200).json(rows);
+    console.log('[reviews/guide] Found', rows?.length || 0, 'reviews');
+    res.status(200).json(rows || []);
   } catch (err) {
-    console.error('[reviews/guide] Error listing reviews', err);
+    console.error('[reviews/guide] Error listing reviews:', err.message);
+    console.error('[reviews/guide] Error stack:', err.stack);
     next(err);
   }
 });

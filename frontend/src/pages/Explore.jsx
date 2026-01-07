@@ -7,8 +7,8 @@ import "./Explore.css";
 
 export default function Explore() {
   const [hikes, setHikes] = useState([]);
-  const [joinedIds, setJoinedIds] = useState([]); // hikeIds user joined
-  const [filter, setFilter] = useState("upcoming"); // "upcoming" | "past" | "all"
+  const [joinedIds, setJoinedIds] = useState([]);
+  const [filter, setFilter] = useState("upcoming");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [user, setUser] = useState(auth.currentUser);
@@ -16,26 +16,24 @@ export default function Explore() {
   const [authReady, setAuthReady] = useState(false);
   const [userReviews, setUserReviews] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [sort, setSort] = useState("newest"); // newest | soonest | priceLow | priceHigh
+  const [sort, setSort] = useState("newest");
 
-
-  // NEW: filters for backend query
-  const [q, setQ] = useState("");                 // search
-  const [difficulty, setDifficulty] = useState(""); // "", "easy", "moderate", "hard"
-  const [dateFrom, setDateFrom] = useState("");   // "YYYY-MM-DD"
+  // Filter states
+  const [q, setQ] = useState("");
+  const [difficulty, setDifficulty] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [priceFrom, setPriceFrom] = useState("");
   const [priceTo, setPriceTo] = useState("");
-  const [locationQ, setLocationQ] = useState(""); // location search box
+  const [locationQ, setLocationQ] = useState("");
+
   // Listen for auth state changes
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      // Clear joined IDs when user logs out
       if (!u) {
         setJoinedIds([]);
       }
-      // Mark that Firebase has finished initialising auth state
       setAuthReady(true);
     });
     return () => unsub();
@@ -45,7 +43,7 @@ export default function Explore() {
     setLoading(true);
     setErr("");
     try {
-      // Always get hikes (send filter params)
+      // Build query parameters
       const params = {
         search: q.trim() || undefined,
         difficulty: difficulty || undefined,
@@ -56,34 +54,34 @@ export default function Explore() {
         location: locationQ.trim() || undefined,
       };
 
-      const hikesRes = await api.get("/api/hikes", { params });
+      // FIXED: Remove double /api prefix
+      const hikesRes = await api.get("/hikes", { params });
       const hikesData = hikesRes.data || [];
       setHikes(hikesData);
 
       // Only get profile/bookings if user is logged in
       if (user) {
         try {
-          const profileRes = await api.get("/api/me");
+          // FIXED: Remove double /api prefix
+          const profileRes = await api.get("/me");
           const profile = profileRes.data || {};
           setUserProfile(profile);
-          const bookings = profile.bookings || [];
+          const bookings = Array.isArray(profile.bookings) ? profile.bookings : [];
           const joined = bookings
             .filter((b) => b.hikeId)
             .map((b) => b.hikeId);
           setJoinedIds(joined);
 
-          // Load user's reviews
-          const reviewsRes = await api.get('/api/reviews/user/me');
+          // FIXED: Remove double /api prefix
+          const reviewsRes = await api.get('/reviews/user/me');
           setUserReviews(reviewsRes.data || []);
         } catch (profileErr) {
-          // If profile fails, user might not be authenticated
           console.warn("Failed to load profile:", profileErr);
           setJoinedIds([]);
           setUserProfile(null);
           setUserReviews([]);
         }
       } else {
-        // User is not logged in, clear joined IDs
         setJoinedIds([]);
         setUserProfile(null);
         setUserReviews([]);
@@ -104,18 +102,17 @@ export default function Explore() {
   const navigate = useNavigate();
 
   async function handleJoin(hikeId) {
-    // If user is not logged in, trigger login modal via custom event
     if (!user) {
       window.dispatchEvent(new CustomEvent('openAuthModal', { detail: { tab: 'login' } }));
       return;
     }
 
     try {
-      await api.post(`/api/hikes/${hikeId}/join`);
-      await load(); // refresh counts + joined state
+      // FIXED: Remove double /api prefix
+      await api.post(`/hikes/${hikeId}/join`);
+      await load();
     } catch (e) {
       console.error("Join failed", e);
-      // If unauthorized, trigger login modal
       if (e?.response?.status === 401) {
         window.dispatchEvent(new CustomEvent('openAuthModal', { detail: { tab: 'login' } }));
       } else {
@@ -126,7 +123,8 @@ export default function Explore() {
 
   async function handleLeave(hikeId) {
     try {
-      await api.delete(`/api/hikes/${hikeId}/join`);
+      // FIXED: Remove double /api prefix
+      await api.delete(`/hikes/${hikeId}/join`);
       await load();
     } catch (e) {
       console.error("Leave failed", e);
@@ -141,26 +139,28 @@ export default function Explore() {
     return userReviews.some(review => review.hikeId === hikeId);
   };
 
-  // Apply filter rules
+  // Apply time filter (upcoming/past)
   const filteredHikes = useMemo(() => {
-    return (hikes || []).filter((h) => {
+    const hikesArr = Array.isArray(hikes) ? hikes : [];
+    return hikesArr.filter((h) => {
       const date = h.date || h.createdAt;
       const d = date ? new Date(date) : null;
 
       if (filter === "upcoming") {
         if (!d) return false;
-        return d >= now; // all upcoming hikes (joined or not)
+        return d >= now;
       }
 
       if (filter === "past") {
         if (!d) return false;
-        return d < now; // all past hikes
+        return d < now;
       }
 
       return true;
     });
   }, [hikes, filter, now]);
 
+  // Apply sorting
   const sortedHikes = useMemo(() => {
     const arr = [...filteredHikes];
 
@@ -171,7 +171,7 @@ export default function Explore() {
     } else if (sort === "priceHigh") {
       arr.sort((a, b) => (b.price ?? -1) - (a.price ?? -1));
     } else {
-      // newest
+      // newest (default)
       arr.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     }
 
@@ -193,10 +193,7 @@ export default function Explore() {
 
   return (
     <div className="explore-page">
-      <div
-        className="explore-header"
-        style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}
-      >
+      <div className="explore-header" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
         <div>
           <h2 style={{ marginBottom: 4 }}>Explore Hikes</h2>
           <p style={{ margin: 0, color: "#666" }}>{sortedHikes.length} hikes found</p>
@@ -358,7 +355,7 @@ export default function Explore() {
             <button
               onClick={() => {
                 load();
-                setShowFilters(false); // collapse after apply = feels clean
+                setShowFilters(false);
               }}
               className="btn-primary"
               style={{ padding: "10px 12px", borderRadius: 10 }}
@@ -415,4 +412,3 @@ export default function Explore() {
     </div>
   );
 }
-

@@ -56,13 +56,13 @@ export default function HikeDetails() {
     setErr("");
     try {
       // Always load hike details
-      const hikeRes = await api.get(`/api/hikes/${id}`);
+      const hikeRes = await api.get(`/hikes/${id}`);
       setHike(hikeRes.data || null);
 
   // Only load profile/bookings if user is logged in and auth is ready
   if (authReady && user) {
         try {
-          const profileRes = await api.get("/api/me");
+          const profileRes = await api.get("/me");
           const profile = profileRes.data;
           setUserProfile(profile);
           const bookings = profile?.bookings || [];
@@ -71,7 +71,7 @@ export default function HikeDetails() {
 
           // Check if user has already reviewed this hike
           try {
-            const reviewsRes = await api.get('/api/reviews/user/me');
+            const reviewsRes = await api.get('/reviews/user/me');
             const userReviews = reviewsRes.data || [];
             const hasReviewedThisHike = userReviews.some(review => review.hikeId === id);
             setHasReviewed(hasReviewedThisHike);
@@ -120,7 +120,7 @@ export default function HikeDetails() {
     }
 
     try {
-      await api.post(`/api/hikes/${id}/join`);
+      await api.post(`/hikes/${id}/join`);
       await load();
     } catch (e) {
       console.error("Join failed", e);
@@ -135,7 +135,7 @@ export default function HikeDetails() {
 
   async function handleLeave() {
     try {
-      await api.delete(`/api/hikes/${id}/join`);
+      await api.delete(`/hikes/${id}/join`);
       await load();
     } catch (e) {
       console.error("Leave failed", e);
@@ -196,7 +196,7 @@ export default function HikeDetails() {
     if (!window.confirm('Are you sure you want to delete this hike? This cannot be undone.')) return;
     setDeleting(true);
     try {
-      const response = await api.delete(`/api/hikes/${hike.id}`);
+      const response = await api.delete(`/hikes/${hike.id}`);
       // Success - navigate to profile
       navigate('/profile');
     } catch (e) {

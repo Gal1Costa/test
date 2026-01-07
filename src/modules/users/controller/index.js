@@ -6,6 +6,8 @@ const usersRepo = require('../repository');
 const { prisma } = require('../../../shared/prisma');
 
 const router = Router();
+const { deleteUserByUid } = require('../../../adapters/firebase.auth');
+const { recordAudit } = require('../../administration/audit');
 
 // GET /api/users/me - return current user's profile (allows visitor access)
 router.get('/me', async (req, res, next) => {
@@ -171,6 +173,17 @@ router.get('/:id', requireRole(['hiker','guide','admin']), async (req, res, next
     console.error('[users/:id] Error fetching user by id:', err);
     next(err);
   }
+});
+
+// Export the router after all routes are defined
+
+// DELETE /api/users/me - forwarded to /api/me (use soft-delete there)
+// To avoid duplicate hard-delete logic we forward clients to the canonical
+// endpoint `/api/me`. This returns a 307 so clients that honor redirects
+// will repeat the DELETE against `/api/me`. Frontend should call `/api/me`.
+router.delete('/me', requireRole(['hiker','guide','admin']), async (req, res) => {
+  // Return a redirect to the canonical endpoint which performs soft-delete
+  return res.redirect(307, '/api/me');
 });
 
 module.exports = router;

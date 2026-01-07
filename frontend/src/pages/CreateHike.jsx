@@ -99,7 +99,7 @@ export default function CreateHike() {
       console.log("ROUTE STATE JUST BEFORE SUBMIT:", route);
 
 
-      const res = await api.post('/api/hikes', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const res = await api.post('/hikes', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       const created = res?.data;
       navigate('/');
     } catch (e) {

@@ -239,9 +239,6 @@ router.patch('/users/:id', requireRole(['admin']), async (req, res, next) => {
 
     if (Object.keys(data).length === 0) return res.status(400).json({ error: 'No valid fields provided' });
 
-<<<<<<< HEAD
-    const updated = await prisma.user.update({ where: { id }, data, select: { id: true, email: true, name: true, role: true, createdAt: true } });
-=======
     // Get existing user to check if role is changing
     const existingUser = await prisma.user.findUnique({ where: { id } });
     if (!existingUser) return res.status(404).json({ error: 'User not found' });
@@ -278,7 +275,6 @@ router.patch('/users/:id', requireRole(['admin']), async (req, res, next) => {
       }
     }
 
->>>>>>> 82ac34f... Admin features + fixes
     try {
       await recordAudit({ actorId: req.user?.id || null, actorEmail: req.user?.email || null, action: 'update_user', resource: 'user', resourceId: id, details: data });
     } catch (e) {}
