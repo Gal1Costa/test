@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { auth, onAuthStateChanged } from "../firebase";
 import api from "../api";
 import HikeCard from "../components/HikeCard";
+import FilterSection from "../components/explore/FilterSection";
+import SortingControls from "../components/explore/SortingControls";
+import SearchBar from "../components/explore/SearchBar";
 import "./Explore.css";
 
 export default function Explore() {
@@ -15,12 +18,11 @@ export default function Explore() {
   const [userProfile, setUserProfile] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [userReviews, setUserReviews] = useState([]);
-  const [showFilters, setShowFilters] = useState(false);
-  const [sort, setSort] = useState("newest");
+  const [sort, setSort] = useState("priceHigh");
 
   // Filter states
   const [q, setQ] = useState("");
-  const [difficulty, setDifficulty] = useState("");
+  const [difficulty, setDifficulty] = useState([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [priceFrom, setPriceFrom] = useState("");
@@ -46,7 +48,9 @@ export default function Explore() {
       // Build query parameters
       const params = {
         search: q.trim() || undefined,
-        difficulty: difficulty || undefined,
+        difficulty: difficulty.length > 0 
+          ? (difficulty.includes("all") ? undefined : difficulty.join(","))
+          : undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         priceFrom: priceFrom !== "" ? priceFrom : undefined,
@@ -54,7 +58,6 @@ export default function Explore() {
         location: locationQ.trim() || undefined,
       };
 
-      // FIXED: Remove double /api prefix
       const hikesRes = await api.get("/hikes", { params });
       const hikesData = hikesRes.data || [];
       setHikes(hikesData);
@@ -62,7 +65,6 @@ export default function Explore() {
       // Only get profile/bookings if user is logged in
       if (user) {
         try {
-          // FIXED: Remove double /api prefix
           const profileRes = await api.get("/me");
           const profile = profileRes.data || {};
           setUserProfile(profile);
@@ -72,7 +74,6 @@ export default function Explore() {
             .map((b) => b.hikeId);
           setJoinedIds(joined);
 
-          // FIXED: Remove double /api prefix
           const reviewsRes = await api.get('/reviews/user/me');
           setUserReviews(reviewsRes.data || []);
         } catch (profileErr) {
@@ -108,7 +109,6 @@ export default function Explore() {
     }
 
     try {
-      // FIXED: Remove double /api prefix
       await api.post(`/hikes/${hikeId}/join`);
       await load();
     } catch (e) {
@@ -123,7 +123,6 @@ export default function Explore() {
 
   async function handleLeave(hikeId) {
     try {
-      // FIXED: Remove double /api prefix
       await api.delete(`/hikes/${hikeId}/join`);
       await load();
     } catch (e) {
@@ -193,222 +192,90 @@ export default function Explore() {
 
   return (
     <div className="explore-page">
-      <div className="explore-header" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-        <div>
-          <h2 style={{ marginBottom: 4 }}>Explore Hikes</h2>
-          <p style={{ margin: 0, color: "#666" }}>{sortedHikes.length} hikes found</p>
-        </div>
-
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            style={{ padding: 10, borderRadius: 10, border: "1px solid #e5e7eb" }}
-          >
-            <option value="newest">Sort: Newest</option>
-            <option value="soonest">Sort: Soonest</option>
-            <option value="priceLow">Sort: Price (low → high)</option>
-            <option value="priceHigh">Sort: Price (high → low)</option>
-          </select>
-
-          <button
-            onClick={() => setShowFilters((v) => !v)}
-            className="btn-cancel"
-            style={{ padding: "10px 12px", borderRadius: 10 }}
-          >
-            {showFilters ? "Hide filters" : "Filters"}
-          </button>
-          <button
-            onClick={() => {
+      <div className="explore-layout">
+        {/* Left: Filter Sidebar */}
+        <div className="filter-sidebar">
+          <FilterSection
+            locationValue={locationQ}
+            onLocationChange={setLocationQ}
+            dateFrom={dateFrom}
+            onDateFromChange={setDateFrom}
+            dateTo={dateTo}
+            onDateToChange={setDateTo}
+            priceFrom={priceFrom}
+            onPriceFromChange={setPriceFrom}
+            priceTo={priceTo}
+            onPriceToChange={setPriceTo}
+            difficultyValue={difficulty}
+            onDifficultyChange={setDifficulty}
+            activeFilter={filter}
+            onFilterChange={setFilter}
+            onClearFilters={() => {
               setQ("");
-              setDifficulty("");
+              setDifficulty([]);
               setDateFrom("");
               setDateTo("");
               setPriceFrom("");
               setPriceTo("");
               setLocationQ("");
             }}
-            className="btn-cancel"
-            style={{ padding: "10px 12px", borderRadius: 10 }}
-          >
-            Clear
-          </button>
-
-          <button
-            onClick={() => {
+            onApplyFilters={() => {
               load();
-              setShowFilters(false);
             }}
-            className="btn-primary"
-            style={{ padding: "10px 12px", borderRadius: 10 }}
-          >
-            Apply
-          </button>
-        </div>
-      </div>
-
-      {/* Quick search row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 180px", gap: 10, marginTop: 14 }}>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder='Search hikes (title, location, etc.)'
-          style={{ padding: 12, borderRadius: 12, border: "1px solid #e5e7eb" }}
-        />
-        <select
-          value={difficulty}
-          onChange={(e) => setDifficulty(e.target.value)}
-          style={{ padding: 12, borderRadius: 12, border: "1px solid #e5e7eb" }}
-        >
-          <option value="">Difficulty (all)</option>
-          <option value="easy">Easy</option>
-          <option value="moderate">Moderate</option>
-          <option value="hard">Hard</option>
-        </select>
-      </div>
-
-      {/* Filters panel (collapsible) */}
-      {showFilters && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: 14,
-            border: "1px solid #e5e7eb",
-            borderRadius: 14,
-            background: "#fff",
-            display: "grid",
-            gap: 12,
-          }}
-        >
-          <input
-            value={locationQ}
-            onChange={(e) => setLocationQ(e.target.value)}
-            placeholder='Location / Meeting place (e.g. "Kazbegi")'
-            style={{ padding: 12, borderRadius: 12, border: "1px solid #e5e7eb" }}
+            isSidebar={true}
           />
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div style={{ display: "grid", gap: 6 }}>
-              <label style={{ fontSize: 12, color: "#666" }}>Date from</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                style={{ padding: 12, borderRadius: 12, border: "1px solid #e5e7eb" }}
-              />
-            </div>
-
-            <div style={{ display: "grid", gap: 6 }}>
-              <label style={{ fontSize: 12, color: "#666" }}>Date to</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                style={{ padding: 12, borderRadius: 12, border: "1px solid #e5e7eb" }}
-              />
-            </div>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div style={{ display: "grid", gap: 6 }}>
-              <label style={{ fontSize: 12, color: "#666" }}>Price from</label>
-              <input
-                type="number"
-                min="0"
-                value={priceFrom}
-                onChange={(e) => setPriceFrom(e.target.value)}
-                placeholder="0"
-                style={{ padding: 12, borderRadius: 12, border: "1px solid #e5e7eb" }}
-              />
-            </div>
-
-            <div style={{ display: "grid", gap: 6 }}>
-              <label style={{ fontSize: 12, color: "#666" }}>Price to</label>
-              <input
-                type="number"
-                min="0"
-                value={priceTo}
-                onChange={(e) => setPriceTo(e.target.value)}
-                placeholder="100"
-                style={{ padding: 12, borderRadius: 12, border: "1px solid #e5e7eb" }}
-              />
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-            <button
-              onClick={() => {
-                setQ("");
-                setDifficulty("");
-                setDateFrom("");
-                setDateTo("");
-                setPriceFrom("");
-                setPriceTo("");
-                setLocationQ("");
-              }}
-              className="btn-cancel"
-              style={{ padding: "10px 12px", borderRadius: 10 }}
-            >
-              Clear
-            </button>
-
-            <button
-              onClick={() => {
-                load();
-                setShowFilters(false);
-              }}
-              className="btn-primary"
-              style={{ padding: "10px 12px", borderRadius: 10 }}
-            >
-              Apply
-            </button>
-          </div>
         </div>
-      )}
 
-      {/* Filter tabs */}
-      <div className="filter-tabs" style={{ marginTop: 16 }}>
-        {["upcoming", "past"].map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`filter-btn ${filter === f ? "active" : ""}`}
-          >
-            {f === "upcoming" ? "Upcoming" : "Past"}
-          </button>
-        ))}
+        {/* Right: Content Area */}
+        <div className="content-area">
+          {/* Hero Header */}
+          <div className="explore-hero">
+            <div className="glow-blue"></div>
+            <h1 className="hero-title">Discover Your Next Adventure</h1>
+            <p className="hero-subtitle">Explore breathtaking trails and unforgettable hiking experiences</p>
+
+            {/* Search Bar */}
+            <SearchBar value={q} onChange={setQ} onSearch={load} />
+
+            {/* Results Count + Sort */}
+            <div className="results-header">
+              <span className="results-badge">{sortedHikes.length} hikes available</span>
+              <SortingControls sortValue={sort} onSortChange={setSort} />
+            </div>
+          </div>
+
+          {/* Hike Cards Grid */}
+          {sortedHikes.length === 0 ? (
+            <div className="empty-state">
+              <p>No hikes match your filters.</p>
+            </div>
+          ) : (
+            <div className="hikes-grid">
+              {sortedHikes.map((h) => {
+                const hikeDate = h.date || h.createdAt;
+                const d = hikeDate ? new Date(hikeDate) : null;
+                const isPastHike = d && d < now;
+                const isJoinedHike = joinedSet.has(h.id);
+                const needsReview = isPastHike && isJoinedHike && !hasReviewedHike(h.id);
+
+                return (
+                  <HikeCard
+                    key={h.id}
+                    hike={h}
+                    isJoined={isJoinedHike}
+                    onJoin={(id) => handleJoin(id)}
+                    onLeave={(id) => handleLeave(id)}
+                    allowJoin={filter === "upcoming"}
+                    allowLeave={true}
+                    userProfile={userProfile}
+                    needsReview={needsReview}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
-
-      {/* Hikes */}
-      {sortedHikes.length === 0 ? (
-        <div className="empty-state">
-          <p>No hikes match your filters.</p>
-        </div>
-      ) : (
-        <div className="hikes-grid">
-          {sortedHikes.map((h) => {
-            const hikeDate = h.date || h.createdAt;
-            const d = hikeDate ? new Date(hikeDate) : null;
-            const isPastHike = d && d < now;
-            const isJoinedHike = joinedSet.has(h.id);
-            const needsReview = isPastHike && isJoinedHike && !hasReviewedHike(h.id);
-
-            return (
-              <HikeCard
-                key={h.id}
-                hike={h}
-                isJoined={isJoinedHike}
-                onJoin={(id) => handleJoin(id)}
-                onLeave={(id) => handleLeave(id)}
-                allowJoin={filter === "upcoming"}
-                allowLeave={true}
-                userProfile={userProfile}
-                needsReview={needsReview}
-              />
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

@@ -29,6 +29,8 @@ services:
       ADMIN_UIDS: ${ADMIN_UIDS:-yPDBrkpp4yfMAeUI7ew1CcgdW823}
     depends_on:
       - db
+    ports:
+      - "127.0.0.1:3000:3000"
     networks:
       - trailhub
 
