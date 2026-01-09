@@ -32,6 +32,17 @@ export default function HikeCard({
     (hike.guideId && userProfile.guide?.id === hike.guideId)
   );
 
+  // Determine hike type badge (Multi-day or Day)
+  const getHikeType = () => {
+    const duration = hike.duration || '';
+    // Check if duration contains "day" or is multi-day
+    if (duration.toLowerCase().includes('day') || duration.toLowerCase().includes('days')) {
+      return 'Multi-day';
+    }
+    // Default to "Day" for single day hikes
+    return 'Day';
+  };
+
   // Decide button state
   let buttonLabel = '';
   let disabled = true;
@@ -74,13 +85,23 @@ export default function HikeCard({
 
   const difficulty = (hike.difficulty || 'moderate').toLowerCase();
 
-  function handleView(e) {
-    // If clicked from a button, stopPropagation handled by parent
-    if (!user) {
-      // open auth modal (app listens to this custom event)
-      window.dispatchEvent(new CustomEvent('openAuthModal', { detail: { tab: 'login' } }));
-      return;
+  // Format hike cost/price
+  const formatCost = (price) => {
+    if (price === null || price === undefined || price === 0) {
+      return 'Free';
     }
+    const numPrice = parseFloat(price);
+    if (isNaN(numPrice)) return 'Free';
+    return numPrice % 1 === 0 ? `$${numPrice.toFixed(0)}` : `$${numPrice.toFixed(2)}`;
+  };
+
+  // Format difficulty for display
+  const formatDifficulty = (diff) => {
+    if (!diff) return 'Moderate';
+    return diff.charAt(0).toUpperCase() + diff.slice(1).toLowerCase();
+  };
+
+  function handleView(e) {
     navigate(`/hikes/${hike.id}`, { state: { fromProfile: !!fromProfile } });
   }
 
@@ -95,7 +116,8 @@ export default function HikeCard({
         ) : (
           <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #e0e0e0 0%, #f0f0f0 100%)' }} />
         )}
-        <div className={`difficulty-badge ${difficulty}`}>{difficulty}</div>
+        {/* Type Badge */}
+        <div className="hike-type-badge">{getHikeType()}</div>
         {needsReview && (
           <div className="review-indicator" title="Review pending">
             ✍️
@@ -105,12 +127,24 @@ export default function HikeCard({
 
       <div className="hike-content" onClick={handleView}>
         <h3 className="hike-title">{hike.name || hike.title || 'Untitled hike'}</h3>
-        <div className="hike-meta">
-          <div className="meta-item">📍 {hike.location || 'Unknown location'}</div>
-          <div className="meta-item">📅 {date ? new Date(date).toLocaleDateString() : 'Date TBD'}</div>
-          {hike.guideName && <div className="meta-item">👤 {hike.guideName}</div>}
+        <div className="hike-location">📍 {hike.location || 'Unknown location'}</div>
+        
+        {/* Single line: Difficulty, Duration, Price */}
+        <div className="hike-details-line">
+          <span className="detail-item">
+            <span className="detail-icon">⛰️</span>
+            {formatDifficulty(difficulty)}
+          </span>
+          {hike.duration && (
+            <span className="detail-item">
+              <span className="detail-icon">⏱️</span>
+              {hike.duration}
+            </span>
+          )}
+          <span className="detail-item price">
+            {formatCost(hike.price || hike.cost)}
+          </span>
         </div>
-        <div className="participants-info">👥 {participantsCount}{capacity ? ` / ${capacity}` : ''} {isFull ? '(Full)' : ''}</div>
       </div>
 
       <div className="hike-actions">
