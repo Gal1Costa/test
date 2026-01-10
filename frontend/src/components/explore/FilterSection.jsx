@@ -153,7 +153,7 @@ export default function FilterSection({
 
         {/* Difficulty */}
         <div className="filter-group">
-          <label className="filter-group-label">Difficulty</label>
+          <label className="filter-group-label">Difficulty Level</label>
           <div className="difficulty-checkboxes">
             {difficultyOptions.map((option) => (
               <label key={option.value} className="difficulty-checkbox">
