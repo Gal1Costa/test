@@ -34,7 +34,7 @@ function safeJsonParse(value, fallback) {
   }
 }
 
-function saveRouteFile({ hikeId, mapLocation, points }) {
+function saveRouteFile({ hikeId, mapLocation, points, destinations, mapMode }) {
   const routesDir = ensureRoutesDir();
   const filename = `${hikeId}.json`;
   const absPath = path.join(routesDir, filename);
@@ -45,6 +45,8 @@ function saveRouteFile({ hikeId, mapLocation, points }) {
     savedAt: new Date().toISOString(),
     mapLocation: mapLocation ?? null,
     points: Array.isArray(points) ? points : [],
+    destinations: Array.isArray(destinations) ? destinations : null,
+    mapMode: mapMode || null,
   };
 
   fs.writeFileSync(absPath, JSON.stringify(payload, null, 2), 'utf-8');
@@ -69,21 +71,52 @@ function readRouteFile(routePath) {
  * @returns {Promise<Object|null>} Route data or null
  */
 async function readRouteAny(routePath) {
-  if (!routePath) return null;
+  if (!routePath || typeof routePath !== 'string') return null;
 
-  // If it's a URL (Spaces CDN), fetch it
+  // If it's a URL (Spaces CDN), fetch it with timeout
   if (/^https?:\/\//i.test(routePath)) {
     try {
-      const r = await fetch(routePath);
-      if (!r.ok) return null;
-      return await r.json();
-    } catch {
+      // Use AbortController for timeout (10 seconds) - available in Node.js 18+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      try {
+        const r = await fetch(routePath, { 
+          signal: controller.signal,
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!r.ok) {
+          console.warn(`[readRouteAny] HTTP ${r.status} for route: ${routePath}`);
+          return null;
+        }
+        
+        const data = await r.json();
+        return data;
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          console.warn(`[readRouteAny] Timeout fetching route: ${routePath}`);
+        } else {
+          console.warn(`[readRouteAny] Fetch error for route: ${routePath}`, fetchError.message || fetchError);
+        }
+        return null;
+      }
+    } catch (error) {
+      console.warn(`[readRouteAny] Error fetching route: ${routePath}`, error.message || error);
       return null;
     }
   }
 
   // Else local path
-  return readRouteFile(routePath);
+  try {
+    return readRouteFile(routePath);
+  } catch (error) {
+    console.warn(`[readRouteAny] Error reading local route file: ${routePath}`, error.message || error);
+    return null;
+  }
 }
 
 /**
@@ -91,34 +124,58 @@ async function readRouteAny(routePath) {
  * @param {Object} params
  * @param {string} params.hikeId - Hike ID
  * @param {Object|null} params.mapLocation - Map location data
- * @param {Array} params.points - Route points array
+ * @param {Array} params.points - Route points array (for simple mode or converted from destinations)
+ * @param {Array} params.destinations - Destinations array (for destinations mode)
+ * @param {string} params.mapMode - Map mode: 'simple' or 'destinations'
  * @param {Object|null} params.storageAdapter - Spaces storage adapter (or null)
  * @returns {Promise<string>} URL or local path
  */
-async function saveRouteToStorage({ hikeId, mapLocation, points, storageAdapter }) {
+async function saveRouteToStorage({ hikeId, mapLocation, points, destinations, mapMode, storageAdapter }) {
   const payload = {
     version: 1,
     hikeId,
     savedAt: new Date().toISOString(),
     mapLocation: mapLocation ?? null,
     points: Array.isArray(points) ? points : [],
+    destinations: Array.isArray(destinations) ? destinations : null,
+    mapMode: mapMode || null,
   };
 
   const key = `routes/${hikeId}.json`;
   const buf = Buffer.from(JSON.stringify(payload, null, 2), "utf-8");
 
+  console.log(`[saveRouteToStorage] Attempting to save route:`, {
+    hikeId,
+    key,
+    payloadSize: buf.length,
+    hasStorageAdapter: !!storageAdapter,
+    mapMode,
+    pointsCount: Array.isArray(points) ? points.length : 0,
+    destinationsCount: Array.isArray(destinations) ? destinations.length : 0,
+  });
+
   // If adapter works, store in Spaces
   if (storageAdapter?.uploadObject) {
     try {
+      console.log(`[saveRouteToStorage] Uploading to DigitalOcean Spaces: ${key}`);
       const uploaded = await storageAdapter.uploadObject(key, buf, "application/json");
-      if (uploaded?.url) return uploaded.url; // store CDN URL in DB
+      if (uploaded?.url) {
+        console.log(`[saveRouteToStorage] Successfully uploaded to Spaces: ${uploaded.url}`);
+        return uploaded.url; // store CDN URL in DB
+      } else {
+        console.warn(`[saveRouteToStorage] Upload returned no URL, using fallback`);
+      }
     } catch (e) {
-      console.warn("[routes] upload to storage failed, fallback to local:", e.message || e);
+      console.error("[saveRouteToStorage] Upload to storage failed, fallback to local:", e.message || e);
+      console.error("[saveRouteToStorage] Error details:", e);
     }
+  } else {
+    console.warn("[saveRouteToStorage] No storage adapter available, using local fallback");
   }
 
   // fallback local
-  return saveRouteFile({ hikeId, mapLocation, points });
+  console.log(`[saveRouteToStorage] Saving to local file as fallback`);
+  return saveRouteFile({ hikeId, mapLocation, points, destinations, mapMode });
 }
 
 function haversineKm(a, b) {
@@ -166,12 +223,19 @@ router.get('/', async (req, res, next) => {
     };
 
     // optional: clean NaN
+    if (Number.isNaN(filters.dateFrom?.getTime())) delete filters.dateFrom;
+    if (Number.isNaN(filters.dateTo?.getTime())) delete filters.dateTo;
     if (Number.isNaN(filters.priceFrom)) delete filters.priceFrom;
     if (Number.isNaN(filters.priceTo)) delete filters.priceTo;
 
+    console.log('[hikes/controller] GET /api/hikes - filters:', filters);
+    
     const data = await repo.listHikes(filters);
+    console.log('[hikes/controller] GET /api/hikes - returning', data?.length || 0, 'hikes');
     res.json(data);
   } catch (err) {
+    console.error('[hikes/controller] Error in GET /api/hikes:', err);
+    console.error('[hikes/controller] Error stack:', err.stack);
     next(err);
   }
 });
@@ -183,12 +247,32 @@ router.get('/:id', async (req, res, next) => {
     const row = await repo.getHikeById(req.params.id);
     if (!row) return send404(res);
 
-    const routeData = await readRouteAny(row.routePath);
-    const route = routeData?.points ?? [];
-    const mapLocation = routeData?.mapLocation ?? null;
+    // Try to load route data, but don't fail if it's unavailable
+    let route = [];
+    let destinations = null;
+    let mapMode = null;
+    let mapLocation = null;
 
-    res.json({ ...row, route, mapLocation });
-  } catch (err) { next(err); }
+    if (row.routePath) {
+      try {
+        const routeData = await readRouteAny(row.routePath);
+        if (routeData) {
+          route = routeData.points ?? [];
+          destinations = routeData.destinations ?? null;
+          mapMode = routeData.mapMode ?? null;
+          mapLocation = routeData.mapLocation ?? null;
+        }
+      } catch (routeError) {
+        console.warn(`[hikes/controller] Error loading route for hike ${req.params.id}:`, routeError.message);
+        // Continue with empty route data - hike can still be returned
+      }
+    }
+
+    res.json({ ...row, route, destinations, mapMode, mapLocation });
+  } catch (err) { 
+    console.error(`[hikes/controller] Error in GET /:id for ${req.params.id}:`, err);
+    next(err); 
+  }
 });
 
 // POST /api/hikes  (multipart: cover image; route/mapLocation saved as JSON file)
@@ -201,12 +285,23 @@ router.post('/', upload.fields([{ name: 'cover' }]), async (req, res, next) => {
     // Map data comes as JSON strings in multipart form-data
     const routePoints = safeJsonParse(body.route, []);
     const mapLocation = safeJsonParse(body.mapLocation, null);
+    const destinations = safeJsonParse(body.destinations, []);
+    const mapMode = (body.mapMode === 'destinations') ? 'destinations' : 'simple';
+
+    // Convert destinations to points format if in destinations mode
+    let pointsForDistance = routePoints;
+    if (mapMode === 'destinations' && Array.isArray(destinations) && destinations.length > 0) {
+      // Extract [lat, lng] from destinations array for distance calculation
+      // Filter out invalid destinations (missing or invalid lat/lng)
+      const validDestinations = destinations.filter(d => d && typeof d.lat === 'number' && typeof d.lng === 'number' && !isNaN(d.lat) && !isNaN(d.lng));
+      pointsForDistance = validDestinations.map(d => [d.lat, d.lng]);
+    }
 
     const data = {
       title: body.name || body.title || 'Untitled hike',
       description: body.description || null,
       difficulty: body.difficulty || null,
-      distance: (Array.isArray(routePoints) && routePoints.length > 1) ? `${totalRouteKm(routePoints).toFixed(1)} km` : (body.distance || null),
+      distance: (Array.isArray(pointsForDistance) && pointsForDistance.length > 1) ? `${totalRouteKm(pointsForDistance).toFixed(1)} km` : (body.distance || null),
       duration: body.duration || null,
       elevationGain: body.elevationGain || null,
       price: body.price ? parseInt(body.price, 10) : null,
@@ -216,7 +311,9 @@ router.post('/', upload.fields([{ name: 'cover' }]), async (req, res, next) => {
       meetingPlace: body.meetingPlace || null,
       whatToBring: body.whatToBring || null,
       location: body.location || null,
-      
+      // Store multi-day information if provided
+      isMultiDay: body.isMultiDay === 'true' || body.isMultiDay === true,
+      durationDays: body.durationDays ? parseInt(body.durationDays, 10) : null,
     };
 
     // Handle cover upload (Spaces preferred, Firebase fallback)
@@ -253,24 +350,113 @@ router.post('/', upload.fields([{ name: 'cover' }]), async (req, res, next) => {
     const created = await repo.createHike(data);
 
     // Save route JSON to Spaces (or local fallback) and store routePath in DB
+    // Check for both simple mode (routePoints) and destinations mode (destinations)
     let routePath = null;
-    if (Array.isArray(routePoints) && routePoints.length > 0) {
-      routePath = await saveRouteToStorage({
+    
+    try {
+      const hasSimpleRoute = Array.isArray(routePoints) && routePoints.length > 0;
+      const hasDestinationsRoute = mapMode === 'destinations' && Array.isArray(destinations) && destinations.length > 0;
+      
+      // Debug logging
+      console.log('[hikes/controller] Route save check:', {
         hikeId: created.id,
-        mapLocation,
-        points: routePoints,
-        storageAdapter: adapters.spacesStorage || null,
+        mapMode,
+        mapModeType: typeof mapMode,
+        hasSimpleRoute,
+        hasDestinationsRoute,
+        routePointsLength: Array.isArray(routePoints) ? routePoints.length : 0,
+        routePointsType: Array.isArray(routePoints) ? 'array' : typeof routePoints,
+        destinationsLength: Array.isArray(destinations) ? destinations.length : 0,
+        destinationsType: Array.isArray(destinations) ? 'array' : typeof destinations,
+        destinationsSample: Array.isArray(destinations) && destinations.length > 0 ? destinations[0] : null,
+        pointsForDistanceLength: Array.isArray(pointsForDistance) ? pointsForDistance.length : 0,
+        hasStorageAdapter: !!adapters.spacesStorage,
+        storageAdapterType: adapters.spacesStorage ? typeof adapters.spacesStorage.uploadObject : 'none',
       });
+      
+      if (hasSimpleRoute || hasDestinationsRoute) {
+        // For destinations mode, convert to points format for storage, but also preserve destinations
+        // Important: In destinations mode, always save destinations array even if points conversion fails
+        const pointsToStore = mapMode === 'destinations' ? pointsForDistance : routePoints;
+        const destinationsToStore = mapMode === 'destinations' ? destinations : null;
 
-      if (repo?.updateHike) {
-        await repo.updateHike(created.id, { routePath });
+        // In destinations mode, we must save if destinations exist (regardless of points)
+        // In simple mode, we must save if points exist
+        const shouldSave = (mapMode === 'destinations' && Array.isArray(destinationsToStore) && destinationsToStore.length > 0) ||
+                           (mapMode === 'simple' && Array.isArray(pointsToStore) && pointsToStore.length > 0) ||
+                           (Array.isArray(pointsToStore) && pointsToStore.length > 0);
+
+        if (shouldSave && created?.id) {
+          console.log('[hikes/controller] Saving route to storage:', {
+            hikeId: created.id,
+            mapMode,
+            pointsCount: Array.isArray(pointsToStore) ? pointsToStore.length : 0,
+            destinationsCount: Array.isArray(destinationsToStore) ? destinationsToStore.length : 0,
+            hasStorageAdapter: !!adapters.spacesStorage,
+          });
+
+          routePath = await saveRouteToStorage({
+            hikeId: created.id,
+            mapLocation,
+            points: pointsToStore,
+            destinations: destinationsToStore,
+            mapMode: mapMode,
+            storageAdapter: adapters.spacesStorage || null,
+          });
+
+          console.log('[hikes/controller] Route saved, routePath:', routePath);
+
+          if (repo?.updateHike && routePath) {
+            await repo.updateHike(created.id, { routePath });
+          }
+        } else {
+          console.warn('[hikes/controller] Route not saved - validation failed:', {
+            mapMode,
+            pointsToStoreLength: Array.isArray(pointsToStore) ? pointsToStore.length : 0,
+            destinationsToStoreLength: Array.isArray(destinationsToStore) ? destinationsToStore.length : 0,
+            shouldSave,
+            hasCreatedId: !!created?.id,
+          });
+        }
+      } else {
+        console.warn('[hikes/controller] Route not saved - no valid route data:', {
+          mapMode,
+          routePointsLength: Array.isArray(routePoints) ? routePoints.length : 0,
+          destinationsLength: Array.isArray(destinations) ? destinations.length : 0,
+        });
+      }
+    } catch (routeSaveError) {
+      console.error('[hikes/controller] Error saving route, continuing without route:', routeSaveError);
+      // Continue without route path - hike is already created
+    }
+
+    // Prepare response data - use the data we already have instead of reading back
+    // This avoids errors when trying to read immediately after upload to DigitalOcean Spaces
+    let routeResponse = Array.isArray(routePoints) ? routePoints : [];
+    let destinationsResponse = null;
+    let mapModeResponse = null;
+    
+    // Use the data we just saved instead of reading it back
+    if (routePath) {
+      if (mapMode === 'destinations' && Array.isArray(destinations) && destinations.length > 0) {
+        // Use destinations data we already have
+        destinationsResponse = destinations;
+        mapModeResponse = mapMode;
+        // Use converted points for route display
+        routeResponse = Array.isArray(pointsForDistance) ? pointsForDistance : [];
+      } else if (Array.isArray(routePoints) && routePoints.length > 0) {
+        // Use simple route points
+        routeResponse = routePoints;
+        mapModeResponse = 'simple';
       }
     }
 
     return res.status(201).json({
       ...created,
       routePath: routePath || created.routePath || null,
-      route: Array.isArray(routePoints) ? routePoints : [],
+      route: routeResponse,
+      destinations: destinationsResponse,
+      mapMode: mapModeResponse,
       mapLocation: mapLocation ?? null,
     });
   } catch (err) { next(err); }
@@ -287,18 +473,32 @@ router.put('/:id', upload.fields([{ name: 'cover' }]), async (req, res, next) =>
     // Optional map data
     const routePoints = safeJsonParse(body.route, null);      // null means "not provided"
     const mapLocation = safeJsonParse(body.mapLocation, null);
+    const destinations = safeJsonParse(body.destinations, null);  // null means "not provided"
+    const mapMode = body.mapMode || null;
+
+    // Convert destinations to points format if in destinations mode
+    let pointsForDistance = routePoints;
+    if (mapMode === 'destinations' && Array.isArray(destinations) && destinations.length > 0) {
+      // Extract [lat, lng] from destinations array for distance calculation
+      pointsForDistance = destinations
+        .filter(d => d && typeof d.lat === 'number' && typeof d.lng === 'number')
+        .map(d => [d.lat, d.lng]);
+    }
 
     if (body.title) data.title = body.title;
     if (body.description !== undefined) data.description = body.description || null;
     if (body.difficulty) data.difficulty = body.difficulty;
-    if (Array.isArray(routePoints) && routePoints.length > 1) {
-      data.distance = `${totalRouteKm(routePoints).toFixed(1)} km`;
+    if (Array.isArray(pointsForDistance) && pointsForDistance.length > 1) {
+      data.distance = `${totalRouteKm(pointsForDistance).toFixed(1)} km`;
     } else if (body.distance) {
       data.distance = body.distance;
 }
 
     if (body.elevationGain !== undefined) data.elevationGain = body.elevationGain || null;
     if (body.duration) data.duration = body.duration;
+    // Store multi-day information if provided
+    if (body.isMultiDay !== undefined) data.isMultiDay = body.isMultiDay === 'true' || body.isMultiDay === true;
+    if (body.durationDays !== undefined) data.durationDays = body.durationDays ? parseInt(body.durationDays, 10) : null;
     if (body.price !== undefined) data.price = body.price ? parseInt(body.price, 10) : null;
     if (body.capacity !== undefined) data.capacity = body.capacity ? parseInt(body.capacity, 10) : null;
     if (body.date) data.date = new Date(body.date);
@@ -337,23 +537,69 @@ router.put('/:id', upload.fields([{ name: 'cover' }]), async (req, res, next) =>
     const updated = await repo.updateHike(req.params.id, data);
 
     // If route was provided, save/overwrite route file and store routePath
-    if (Array.isArray(routePoints) && routePoints.length > 0) {
-      const routePath = await saveRouteToStorage({
-        hikeId: req.params.id,
-        mapLocation,
-        points: routePoints,
-        storageAdapter: adapters.spacesStorage || null,
-      });
-      const updated2 = await repo.updateHike(req.params.id, { routePath });
-      return res.json({ ...updated2, route: routePoints, mapLocation: mapLocation ?? null });
+    // Check for both simple mode (routePoints) and destinations mode (destinations)
+    let routePath = updated.routePath;
+    
+    try {
+      const hasSimpleRoute = Array.isArray(routePoints) && routePoints.length > 0;
+      const hasDestinationsRoute = mapMode === 'destinations' && Array.isArray(destinations) && destinations.length > 0;
+      
+      if (hasSimpleRoute || hasDestinationsRoute) {
+        // For destinations mode, convert to points format for storage, but also preserve destinations
+        const pointsToStore = mapMode === 'destinations' ? pointsForDistance : routePoints;
+        const destinationsToStore = mapMode === 'destinations' ? destinations : null;
+
+        routePath = await saveRouteToStorage({
+          hikeId: req.params.id,
+          mapLocation,
+          points: pointsToStore,
+          destinations: destinationsToStore,
+          mapMode: mapMode,
+          storageAdapter: adapters.spacesStorage || null,
+        });
+        await repo.updateHike(req.params.id, { routePath });
+      }
+    } catch (routeSaveError) {
+      console.error('[hikes/controller] Error saving route in PUT:', routeSaveError);
+      // Continue with existing routePath
     }
 
-    // Otherwise, include existing route if there is one
-    const routeData = await readRouteAny(updated.routePath);
+    // Prepare response - use saved data instead of reading back
+    let routeResponse = Array.isArray(routePoints) ? routePoints : [];
+    let destinationsResponse = null;
+    let mapModeResponse = null;
+    
+    if (mapMode === 'destinations' && Array.isArray(destinations) && destinations.length > 0) {
+      destinationsResponse = destinations;
+      mapModeResponse = mapMode;
+      routeResponse = Array.isArray(pointsForDistance) ? pointsForDistance : [];
+    } else if (Array.isArray(routePoints) && routePoints.length > 0) {
+      routeResponse = routePoints;
+      mapModeResponse = 'simple';
+    }
+
+    // Try to load existing route data if no new route was provided
+    if (!routeResponse.length && !destinationsResponse && routePath) {
+      try {
+        const routeData = await readRouteAny(routePath);
+        if (routeData) {
+          routeResponse = routeData.points ?? [];
+          destinationsResponse = routeData.destinations ?? null;
+          mapModeResponse = routeData.mapMode ?? null;
+        }
+      } catch (readError) {
+        console.warn('[hikes/controller] Error reading existing route:', readError);
+        // Continue with empty data
+      }
+    }
+
     return res.json({
       ...updated,
-      route: routeData?.points ?? [],
-      mapLocation: routeData?.mapLocation ?? null,
+      routePath: routePath || updated.routePath || null,
+      route: routeResponse,
+      destinations: destinationsResponse,
+      mapMode: mapModeResponse,
+      mapLocation: mapLocation ?? (updated.mapLocation ?? null),
     });
   } catch (err) { next(err); }
 });

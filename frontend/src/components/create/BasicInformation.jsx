@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mountain, Calendar, Clock, MapPin, Users, DollarSign, TrendingUp, ChevronDown, Check } from 'lucide-react';
+import { Mountain, Calendar, Clock, MapPin, Users, DollarSign, TrendingUp, ChevronDown, Check, Info } from 'lucide-react';
 import './BasicInformation.css';
 
 export default function BasicInformation({ value, onChange, errors = {} }) {
@@ -13,6 +13,10 @@ export default function BasicInformation({ value, onChange, errors = {} }) {
   // Difficulty dropdown state
   const [isDifficultyOpen, setIsDifficultyOpen] = useState(false);
   const difficultyDropdownRef = useRef(null);
+  
+  // Refs for date and time inputs
+  const dateInputRef = useRef(null);
+  const timeInputRef = useRef(null);
 
   const difficultyOptions = [
     { value: 'EASY', label: 'Easy' },
@@ -66,6 +70,92 @@ export default function BasicInformation({ value, onChange, errors = {} }) {
     setIsDifficultyOpen(false);
   };
 
+  const handleIconClick = (e, inputRef) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!inputRef.current) return;
+    
+    // Small delay to ensure the input is ready
+    setTimeout(() => {
+      if (inputRef.current) {
+        // Try modern showPicker API first (works in Chrome 99+, Edge 99+)
+        if (inputRef.current.showPicker && typeof inputRef.current.showPicker === 'function') {
+          try {
+            inputRef.current.showPicker();
+          } catch (err) {
+            // Fallback: trigger a click on the input element
+            inputRef.current.click();
+          }
+        } else {
+          // Fallback for older browsers: simulate a click on the input
+          inputRef.current.click();
+        }
+      }
+    }, 10);
+  };
+
+  // Tooltip component (same as TrailDetails)
+  const TooltipIcon = ({ text }) => {
+    const [isVisible, setIsVisible] = useState(false);
+    const timeoutRef = useRef(null);
+    const tooltipRef = useRef(null);
+
+    const showTooltip = () => {
+      timeoutRef.current = setTimeout(() => {
+        setIsVisible(true);
+      }, 300);
+    };
+
+    const hideTooltip = () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      setIsVisible(false);
+    };
+
+    useEffect(() => {
+      return () => {
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+      };
+    }, []);
+
+    useEffect(() => {
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape' && isVisible) {
+          hideTooltip();
+        }
+      };
+      if (isVisible) {
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+      }
+    }, [isVisible]);
+
+    return (
+      <div
+        className="tooltip-trigger"
+        onMouseEnter={showTooltip}
+        onMouseLeave={hideTooltip}
+        onFocus={showTooltip}
+        onBlur={hideTooltip}
+        tabIndex={0}
+        role="button"
+        aria-label={`Information: ${text}`}
+      >
+        <Info className="info-icon" size={14} />
+        {isVisible && (
+          <div className="info-tooltip" ref={tooltipRef}>
+            <div className="tooltip-content">{text}</div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="basic-info-container">
       <h2 className="basic-info-title">Basic Information</h2>
@@ -95,13 +185,21 @@ export default function BasicInformation({ value, onChange, errors = {} }) {
       <div className="grid-row">
         <div className="field-error-container">
           <label>
-            <span className="label-text">
-              {value.isMultiDay === true ? 'Start Date' : 'Date'} <span className="required-asterisk">*</span>
-            </span>
+            <div className="label-with-tooltip">
+              <span className="label-text">
+                {value.isMultiDay === true ? 'Start Date' : 'Date'} <span className="required-asterisk">*</span>
+              </span>
+              <TooltipIcon text="Click 📅 to pick a date" />
+            </div>
             <div className="input-wrapper">
-              <Calendar className="input-icon input-icon-required" size={16} />
+              <Calendar 
+                className="input-icon input-icon-required input-icon-clickable" 
+                size={16}
+                onClick={(e) => handleIconClick(e, dateInputRef)}
+              />
               <input
                 type="date"
+                ref={dateInputRef}
                 value={value.date || ''}
                 onChange={update('date')}
                 className={`input-base input-with-icon ${getError('date') ? 'has-error' : ''}`}
@@ -113,13 +211,21 @@ export default function BasicInformation({ value, onChange, errors = {} }) {
 
         <div className="field-error-container">
           <label>
-            <span className="label-text">
-              Meeting Time <span className="required-asterisk">*</span>
-            </span>
+            <div className="label-with-tooltip">
+              <span className="label-text">
+                Meeting Time <span className="required-asterisk">*</span>
+              </span>
+              <TooltipIcon text="Click 🕐 to pick a time" />
+            </div>
             <div className="input-wrapper">
-              <Clock className="input-icon input-icon-required" size={16} />
+              <Clock 
+                className="input-icon input-icon-required input-icon-clickable" 
+                size={16}
+                onClick={(e) => handleIconClick(e, timeInputRef)}
+              />
               <input
                 type="time"
+                ref={timeInputRef}
                 value={value.meetingTime || ''}
                 onChange={update('meetingTime')}
                 className={`input-base input-with-icon ${getError('meetingTime') ? 'has-error' : ''}`}

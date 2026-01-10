@@ -147,12 +147,38 @@ export default function Explore() {
 
       if (filter === "upcoming") {
         if (!d) return false;
-        return d >= now;
+        
+        // Combine date and meetingTime for accurate comparison
+        const hikeDate = new Date(d);
+        
+        // If meetingTime exists, combine it with the date
+        if (h.meetingTime) {
+          const [hours, minutes] = h.meetingTime.split(':').map(Number);
+          hikeDate.setHours(hours, minutes, 0, 0);
+        } else {
+          // If no time specified, set to end of day to keep upcoming
+          hikeDate.setHours(23, 59, 59, 999);
+        }
+        
+        return hikeDate >= now;
       }
 
       if (filter === "past") {
         if (!d) return false;
-        return d < now;
+        
+        // Combine date and meetingTime for accurate comparison
+        const hikeDate = new Date(d);
+        
+        // If meetingTime exists, combine it with the date
+        if (h.meetingTime) {
+          const [hours, minutes] = h.meetingTime.split(':').map(Number);
+          hikeDate.setHours(hours, minutes, 0, 0);
+        } else {
+          // If no time specified, set to end of day to keep upcoming
+          hikeDate.setHours(23, 59, 59, 999);
+        }
+        
+        return hikeDate < now;
       }
 
       return true;
@@ -254,7 +280,25 @@ export default function Explore() {
               {sortedHikes.map((h) => {
                 const hikeDate = h.date || h.createdAt;
                 const d = hikeDate ? new Date(hikeDate) : null;
-                const isPastHike = d && d < now;
+                
+                // Determine if hike is past by combining date and meetingTime
+                const isPastHike = (() => {
+                  if (!d) return false;
+                  
+                  const hikeDateObj = new Date(d);
+                  
+                  // If meetingTime exists, combine it with the date
+                  if (h.meetingTime) {
+                    const [hours, minutes] = h.meetingTime.split(':').map(Number);
+                    hikeDateObj.setHours(hours, minutes, 0, 0);
+                  } else {
+                    // If no time specified, set to end of day to keep upcoming
+                    hikeDateObj.setHours(23, 59, 59, 999);
+                  }
+                  
+                  return hikeDateObj < now;
+                })();
+                
                 const isJoinedHike = joinedSet.has(h.id);
                 const needsReview = isPastHike && isJoinedHike && !hasReviewedHike(h.id);
 

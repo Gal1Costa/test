@@ -17,6 +17,37 @@ function validateFutureDate(dateString) {
 }
 
 /**
+ * Validates date and time together to ensure they're not in the past
+ */
+function validateFutureDateTime(dateString, timeString) {
+  // First check if date is valid and not in past
+  const dateError = validateFutureDate(dateString);
+  if (dateError) return dateError;
+
+  // If time is provided and date is today, check if time is in the past
+  if (timeString && dateString) {
+    const selectedDate = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+
+    // If selected date is today, validate the time is not in the past
+    if (selectedDate.getTime() === today.getTime()) {
+      const [hours, minutes] = timeString.split(':').map(Number);
+      const selectedDateTime = new Date();
+      selectedDateTime.setHours(hours, minutes, 0, 0);
+
+      const now = new Date();
+      if (selectedDateTime < now) {
+        return 'Meeting time cannot be in the past';
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Validates a positive number
  */
 function validatePositiveNumber(value, fieldName, isRequired = false) {
@@ -77,6 +108,12 @@ export function validateHikeForm(formData) {
   
   if (!basic.meetingTime || basic.meetingTime.trim() === '') {
     basicErrors.meetingTime = 'Meeting time is required';
+  } else {
+    // Validate that the date and time together are not in the past
+    const dateTimeError = validateFutureDateTime(basic.date, basic.meetingTime);
+    if (dateTimeError) {
+      basicErrors.meetingTime = dateTimeError;
+    }
   }
   
   if (!basic.meetingPlace || basic.meetingPlace.trim() === '') {

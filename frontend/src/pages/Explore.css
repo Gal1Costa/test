@@ -4,6 +4,7 @@
   margin: 0 auto;
   background: linear-gradient(to bottom, #f9fafb, rgba(236, 253, 245, 0.3), rgba(239, 246, 255, 0.2));
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .explore-layout {
@@ -13,15 +14,18 @@
   align-items: start;
 }
 
-.filter-sidebar {
+.explore-layout .filter-sidebar {
   position: sticky;
-  top: 32px;
+  top: 0;
+  padding-top: 0;
 }
 
 .content-area {
   display: flex;
   flex-direction: column;
   gap: 32px;
+  max-width: 100%;
+  width: 100%;
 }
 
 /* Hero Section */
