@@ -136,6 +136,16 @@ async function listHikes(filters = {}) {
             } 
           },
           _count: { select: { bookings: true } },
+          bookings: {
+            include: {
+              user: {
+                include: {
+                  hikerProfile: true,
+                  guide: true,
+                },
+              },
+            },
+          },
         },
       });
     } catch (queryError) {
@@ -154,6 +164,13 @@ async function listHikes(filters = {}) {
           return mapHike({
             ...h,
             participantsCount: h._count?.bookings ?? 0,
+            participants: (h.bookings || []).map(b => ({
+              id: b.user?.id,
+              name: b.user?.name || b.user?.email || 'Participant',
+              photoUrl: b.user?.hikerProfile?.photoUrl || null,
+              role: b.user?.role || null,
+              guideId: b.user?.guide?.id || null,
+            })),
           });
         } catch (mapError) {
           console.error(`[listHikes] Error mapping hike ${h.id}:`, mapError);
@@ -209,8 +226,52 @@ async function createHike(data) {
 }
 
 async function updateHike(id, data) {
-  const h = await prisma.hike.update({ where: { id }, data });
-  return mapHike(h);
+  console.log(`[updateHike] Updating hike ${id} with data:`, { 
+    routePath: data.routePath,
+    title: data.title,
+    coverUrl: data.coverUrl,
+    keys: Object.keys(data)
+  });
+  
+  // Update the hike
+  const updateResult = await prisma.hike.update({ where: { id }, data });
+  console.log(`[updateHike] Prisma update result:`, { 
+    id: updateResult.id,
+    routePath: updateResult.routePath,
+    coverUrl: updateResult.coverUrl
+  });
+  
+  // Re-fetch with all includes to match getHikeById structure
+  const h = await prisma.hike.findUnique({
+    where: { id },
+    include: {
+      guide: { include: { user: true } },
+      _count: { select: { bookings: true } },
+      bookings: { include: { user: { include: { hikerProfile: true, guide: true } } } },
+    },
+  });
+
+  if (!h) return null;
+
+  const mapped = mapHike({
+    ...h,
+    participantsCount: h._count?.bookings ?? 0,
+    participants: (h.bookings || []).map(b => ({
+      id: b.user?.id,
+      name: b.user?.name || b.user?.email || 'Participant',
+      photoUrl: b.user?.hikerProfile?.photoUrl || null,
+      role: b.user?.role || null,
+      guideId: b.user?.guide?.id || null,
+    })),
+  });
+  
+  console.log(`[updateHike] Mapped result:`, { 
+    id: mapped.id,
+    routePath: mapped.routePath,
+    imageUrl: mapped.imageUrl
+  });
+  
+  return mapped;
 }
 
 async function deleteHike(id) {

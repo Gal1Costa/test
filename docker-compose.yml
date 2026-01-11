@@ -9,15 +9,15 @@ services:
       POSTGRES_DB: trailhub_db
     volumes:
       - trailhub_db:/var/lib/postgresql/data
-    ports:  
-      - "5432:5432"  
+    ports:
+      - "5432:5432"
     networks:
       - trailhub
 
   backend:
     build:
       context: .
-      dockerfile: Dockerfile.backend  
+      dockerfile: Dockerfile.backend
     container_name: trailhub-backend
     restart: unless-stopped
     env_file:
@@ -30,9 +30,10 @@ services:
     depends_on:
       - db
     ports:
-      - "127.0.0.1:3000:3000"
+      - "3000:3000"
     networks:
       - trailhub
+    command: ["node", "src/app/index.js"]
 
   web:
     build:
@@ -43,7 +44,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "127.0.0.1:8080:80"
+      - "8080:80"
     networks:
       - trailhub
 

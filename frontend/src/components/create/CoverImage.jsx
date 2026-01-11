@@ -162,6 +162,7 @@ export default function CoverImage({ value, onChange, errors = {} }) {
       }
       
       // File passes size check, proceed with upload
+      console.log('[CoverImage] File selected:', { name: f.name, size: f.size, type: f.type });
       onChange({ ...value, coverFile: f, croppedFile: null });
       setCropMode(false);
     }
@@ -446,6 +447,7 @@ export default function CoverImage({ value, onChange, errors = {} }) {
     canvas.toBlob((blob) => {
       if (blob) {
         const croppedFile = new File([blob], value.coverFile.name, { type: value.coverFile.type || 'image/jpeg' });
+        console.log('[CoverImage] Crop completed:', { fileName: croppedFile.name, size: croppedFile.size });
         onChange({ ...value, croppedFile });
         setCropMode(false);
         setZoom(1);

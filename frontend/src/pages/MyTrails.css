@@ -1,8 +1,8 @@
 /* MyTrails Container */
 .mytrails-container {
-  max-width: 1200px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: 32px;
   background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
   min-height: 100vh;
 }
@@ -302,7 +302,7 @@
   margin-bottom: 1.5rem;
 }
 
-.hikes-grid {
+.mytrails-horizontal-scroll {
   display: flex;
   flex-direction: row;
   gap: 1.5rem;
@@ -312,71 +312,13 @@
   scroll-behavior: smooth;
 }
 
-.hikes-grid .trail-card {
+.mytrails-horizontal-scroll .trail-card {
   min-width: 320px;
   flex-shrink: 0;
   margin: 0; /* remove vertical spacing */
 }
 
-.hike-card {
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  background: white;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  position: relative;
-}
-
-.hike-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-}
-
-.hike-card-image {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-.hike-card:hover .hike-card-image {
-  transform: scale(1.05);
-}
-
-.hike-card-badge {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
-  background: rgba(34, 197, 94, 0.9);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.hike-card-content {
-  padding: 1.5rem;
-}
-
-.hike-card-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #111827;
-  margin-bottom: 0.75rem;
-  line-height: 1.4;
-}
-
-.hike-card-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  color: #6b7280;
-  font-size: 0.95rem;
-  margin-bottom: 1rem;
-}
+/* Removed to avoid conflicts with HikeCard component styles */
 
 .btn-view-hike-details {
   width: 100%;

@@ -1,6 +1,6 @@
 .create-hike-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f9fafb 0%, rgba(240, 253, 244, 0.2) 50%, rgba(239, 246, 255, 0.1) 100%);
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
   padding: 3rem 2rem;
 }
 

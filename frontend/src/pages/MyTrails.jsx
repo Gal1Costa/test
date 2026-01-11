@@ -228,7 +228,7 @@ export default function MyTrails() {
             More events this month ({otherHikes.length})
           </h2>
 
-          <div className="hikes-grid">
+          <div className="mytrails-horizontal-scroll">
             {otherHikes.map(booking => (
               <div key={booking.id} className="trail-card">
                 <div className="trail-image-container">

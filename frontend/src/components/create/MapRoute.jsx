@@ -242,8 +242,14 @@ export default function MapRoute({ value, onChange, errors, isMultiDay = false, 
       : null;
     
     if (mapMode === 'simple') {
+      const newPoint = [latlng.lat, latlng.lng];
+      console.log('[MapRoute] Adding point to simple route:', {
+        newPoint,
+        totalPoints: currentRoute.length + 1,
+        allPoints: [...currentRoute, newPoint]
+      });
       onChange({
-        points: [...currentRoute, [latlng.lat, latlng.lng]],
+        points: [...currentRoute, newPoint],
         destinations: currentDestinations,
         location: currentLocation || { lat: latlng.lat, lng: latlng.lng },
         mapMode: 'simple',
@@ -255,6 +261,11 @@ export default function MapRoute({ value, onChange, errors, isMultiDay = false, 
         lat: latlng.lat,
         lng: latlng.lng,
       };
+      console.log('[MapRoute] Adding destination to destinations route:', {
+        newDest,
+        totalDestinations: currentDestinations.length + 1,
+        allDestinations: [...currentDestinations, newDest]
+      });
       onChange({
         points: currentRoute,
         destinations: [...currentDestinations, newDest],

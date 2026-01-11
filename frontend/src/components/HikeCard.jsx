@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import api from '../api';
@@ -40,7 +40,15 @@ export default function HikeCard({
     return hikeDate < now;
   })();
 
-  const participantsCount = hike.participantsCount ?? 0;
+  // Calculate actual participants count excluding deleted users
+  const activeParticipantsCount = useMemo(() => {
+    if (hike.participants && Array.isArray(hike.participants)) {
+      return hike.participants.filter(p => p && p.name !== 'Deleted User').length;
+    }
+    return hike.participantsCount ?? 0;
+  }, [hike.participants, hike.participantsCount]);
+
+  const participantsCount = activeParticipantsCount;
   const capacity = hike.capacity ?? 0;
   const isFull = hike.isFull || (capacity > 0 && participantsCount >= capacity);
   
