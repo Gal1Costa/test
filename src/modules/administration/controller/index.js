@@ -164,7 +164,7 @@ router.patch('/hikes/:id', requireRole(['admin']), async (req, res, next) => {
     const body = req.body || {};
 
     // Only allow specific fields to be updated by admin
-    const allowed = ['title', 'description', 'difficulty', 'distance', 'duration', 'price', 'capacity', 'location', 'date', 'meetingTime', 'meetingPlace', 'elevationGain', 'whatToBring', 'coverUrl', 'routePath', 'isCancelled'];
+    const allowed = ['title', 'description', 'difficulty', 'distance', 'duration', 'price', 'capacity', 'location', 'date', 'meetingTime', 'meetingPlace', 'elevationGain', 'whatToBring', 'coverUrl', 'routePath'];
     const data = {};
     for (const k of allowed) {
       if (Object.prototype.hasOwnProperty.call(body, k)) data[k] = body[k] === '' ? null : body[k];
@@ -216,7 +216,6 @@ router.get('/hikes', requireRole(['admin']), async (req, res, next) => {
       date: i.date,
       participantsCount: i._count?.bookings || 0,
       distance: i.distance,
-      isCancelled: !!i.isCancelled,
     }));
 
     res.json({ items: mapped, total, page, pageSize });

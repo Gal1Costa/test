@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Explore from "./pages/Explore";
+import MyTrails from "./pages/MyTrails";
 import HikerProfile from "./pages/HikerProfile";
 import GuideProfile from "./pages/GuideProfile";
 import HikeDetails from "./pages/HikeDetails";
@@ -131,6 +132,7 @@ function App() {
 
             {/* main pages */}
             <Route path="/explore" element={<Explore />} />
+            <Route path="/mytrails" element={<MyTrails />} />
             <Route path="/profile" element={<Navigate to="/profile/hiker" replace />} />
             <Route path="/profile/hiker" element={<HikerProfile />} />
             <Route path="/profile/guide" element={<GuideProfile />} />

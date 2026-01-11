@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import './admin.css';
-import { listHikes, patchHike, deleteHike } from './services/adminApi';
+import { listHikes, deleteHike } from './services/adminApi';
 import DataTable from './components/DataTable';
 import LoadingSkeleton from './components/LoadingSkeleton';
 import EmptyState from './components/EmptyState';
@@ -47,16 +47,6 @@ export default function Hikes() {
   const pages = Math.max(1, Math.ceil((total || 0) / pageSize));
   const pageItems = hikes;
 
-  // Status toggle
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [activeHike, setActiveHike] = useState(null);
-  const [statusLoading, setStatusLoading] = useState(null); // holds id of hike being updated
-
-  const handleToggleStatus = (hike) => {
-    setActiveHike(hike);
-    setConfirmOpen(true);
-  };
-
   // delete
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -83,27 +73,6 @@ export default function Hikes() {
     }
   };
 
-  const doToggle = async () => {
-    if (!activeHike) return;
-    setStatusLoading(activeHike.id);
-    try {
-      const newVal = !!activeHike.isCancelled ? false : true;
-      await patchHike(activeHike.id, { isCancelled: newVal });
-      showToast('Hike status updated', 'success');
-      // refresh current page
-      const res = await listHikes({ page, pageSize, q: query });
-      setHikes(Array.isArray(res.items) ? res.items : []);
-      setTotal(res.total || 0);
-    } catch (err) {
-      showToast('Failed to update hike status', 'error');
-      console.warn('patchHike failed:', err?.message || err);
-    } finally {
-      setStatusLoading(null);
-      setConfirmOpen(false);
-      setActiveHike(null);
-    }
-  };
-
   if (loading) return <LoadingSkeleton rows={6} cols={6} />;
 
   if (!hikes || hikes.length === 0) return <EmptyState title="No hikes found" description="Try adjusting your filters or check back later." />;
@@ -114,14 +83,8 @@ export default function Hikes() {
     { key: 'date', title: 'Date', render: (r) => (r.date ? new Date(r.date).toLocaleDateString() : '—') },
     { key: 'participantsCount', title: 'Participants' },
     { key: 'distance', title: 'Distance' },
-    { key: 'status', title: 'Status', render: (r) => (
-      r.isCancelled ? <span style={{ color: '#b91c1c', fontWeight: 600 }}>Cancelled</span> : <span style={{ color: '#059669', fontWeight: 600 }}>Active</span>
-    )},
     { key: 'actions', title: 'Actions', render: (r) => (
       <div className="admin-actions">
-        <button className="btn" onClick={() => handleToggleStatus(r)} disabled={statusLoading === r.id}>
-          {statusLoading === r.id ? '...' : (r.isCancelled ? 'Reinstate' : 'Cancel')}
-        </button>
         <button className="btn btn-outline-danger" onClick={() => handleDelete(r)}>Delete</button>
         <a className="btn" style={{ textDecoration: 'none' }} href={`/hikes/${r.id}`} target="_blank" rel="noreferrer">View</a>
       </div>
@@ -144,8 +107,6 @@ export default function Hikes() {
           <button onClick={async () => { const p = Math.min(pages, page+1); setPage(p); const res = await listHikes({ page: p, pageSize, q: query }); setHikes(Array.isArray(res.items) ? res.items : []); setTotal(res.total || 0); }} disabled={page===pages}>Next</button>
         </div>
       </div>
-
-      <ConfirmDialog open={confirmOpen} title="Toggle hike status" message={`Are you sure you want to toggle status for "${activeHike?.name || ''}"?`} onConfirm={doToggle} onCancel={() => setConfirmOpen(false)} />
 
       <ConfirmDialog open={deleteConfirmOpen} title="Delete Hike?" message={`Are you sure you want to permanently DELETE the hike "${deleteTarget?.name || ''}"? This will also remove all bookings and reviews. Type DELETE to confirm.`} onConfirm={doDelete} onCancel={() => setDeleteConfirmOpen(false)} requireTyping={true} />
     </div>
