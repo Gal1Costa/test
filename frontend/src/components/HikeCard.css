@@ -7,6 +7,11 @@
   background: white;
   transition: all 0.3s ease;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  color: #111827;
+}
+
+.hike-card .detail-item {
+  color: #6b7280;
 }
 
 .hike-card:hover {
@@ -200,7 +205,7 @@
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #1f2937; /* darker for better readability on Explore/Profile */
+  color: #6b7280; /* darker for better readability on Explore/Profile */
   line-height: 1.2;
   white-space: nowrap;
 }

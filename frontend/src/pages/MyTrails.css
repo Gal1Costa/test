@@ -312,12 +312,6 @@
   scroll-behavior: smooth;
 }
 
-.mytrails-horizontal-scroll .trail-card {
-  min-width: 320px;
-  flex-shrink: 0;
-  margin: 0; /* remove vertical spacing */
-}
-
 /* Removed to avoid conflicts with HikeCard component styles */
 
 .btn-view-hike-details {
