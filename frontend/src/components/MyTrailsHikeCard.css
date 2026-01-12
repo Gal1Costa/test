@@ -1,10 +1,8 @@
-/* MyTrails Hike Card - Independent styling from HikeCard */
 .mytrails-hike-card {
   position: relative;
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  /* background: transparent; */
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   
   /* Fixed sizing - all cards same width and height */
@@ -18,11 +16,10 @@
 }
 
 .mytrails-hike-image-container {
-  position: absolute;
+  position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  inset: 0;
 }
 
 .mytrails-hike-image {
@@ -30,6 +27,7 @@
   height: 100%;
   object-fit: cover;
   transition: transform 0.3s ease;
+  display: block;
 }
 
 .mytrails-hike-card:hover .mytrails-hike-image {
@@ -42,7 +40,6 @@
   left: 0;
   right: 0;
   bottom: 0;
-  inset: 0;
   background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(10px);
@@ -55,6 +52,7 @@
 
 .mytrails-hike-badge {
   align-self: flex-start;
+  white-space: nowrap;
 }
 
 .mytrails-badge-text {
@@ -69,6 +67,7 @@
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+  display: inline-block;
 }
 
 .mytrails-hike-content {
@@ -131,14 +130,6 @@
   .mytrails-hike-card {
     width: 280px;
     height: 340px;
-  }
-
-  .mytrails-hike-image-container {
-    height: 240px;
-  }
-
-  .mytrails-hike-title {
-    font-size: 16px;
   }
 
   .mytrails-detail-item {
