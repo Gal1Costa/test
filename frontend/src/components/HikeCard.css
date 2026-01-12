@@ -270,6 +270,14 @@
   line-height: 1.5;
 }
 
+.explore-page .hike-actions .view-details-btn {
+  color: #1f2937;         /* dark text */
+  background: #f3f4f6;    /* light gray frame */
+  border: 1px solid #e5e7eb;
+  font-size: 12px;
+  font-weight: 500;                             
+}
+
 .view-details-btn:hover {
   background: #e5e7eb;
   border-color: #d1d5db;

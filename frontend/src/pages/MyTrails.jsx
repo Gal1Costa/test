@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { auth, onAuthStateChanged } from "../firebase";
 import api from '../api';
 import MyTrailsHikeCard from '../components/MyTrailsHikeCard';
 import './MyTrails.css';
@@ -12,6 +13,16 @@ export default function MyTrails() {
   const [checkedItems, setCheckedItems] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [user, setUser] = useState(auth.currentUser);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+  const unsub = onAuthStateChanged(auth, (u) => {
+    setUser(u);
+    setAuthReady(true);
+  });
+  return () => unsub();
+}, []);
 
   // Fetch user's upcoming bookings/hikes
   useEffect(() => {
@@ -95,8 +106,9 @@ export default function MyTrails() {
         setLoading(false);
       }
     };
+    if (!authReady || !user) return;
     fetchMyTrails();
-  }, []);
+  }, [authReady, user]);
 
   // Toggle checklist item and save to localStorage
   const toggleChecklistItem = (id) => {
