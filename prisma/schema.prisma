@@ -75,6 +75,8 @@ model Hike {
   difficulty    DifficultyLevel
   distance      String?
   duration      String?
+  durationDays  Int?
+  isMultiDay    Boolean         @default(false)
   price         Int?
   capacity      Int?
   location      String?

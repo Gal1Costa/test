@@ -150,7 +150,24 @@ export default function HikeDetails() {
   const date = hike.date || hike.createdAt;
   const d = date ? new Date(date) : null;
   const now = new Date();
-  const isPast = d ? d < now : false;
+  
+  // Determine if hike is past by combining date and meetingTime
+  const isPast = (() => {
+    if (!d) return false;
+    
+    const hikeDate = new Date(d);
+    
+    // If meetingTime exists, combine it with the date
+    if (hike.meetingTime) {
+      const [hours, minutes] = hike.meetingTime.split(':').map(Number);
+      hikeDate.setHours(hours, minutes, 0, 0);
+    } else {
+      // If no time specified, set to end of day to keep upcoming
+      hikeDate.setHours(23, 59, 59, 999);
+    }
+    
+    return hikeDate < now;
+  })();
 
   const participantsCount = hike.participantsCount ?? 0;
   const capacity = hike.capacity ?? 0;
@@ -304,7 +321,6 @@ export default function HikeDetails() {
                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap contributors" />
                   <Polyline positions={hike.route} color="#2d6a4f" weight={4} opacity={0.8} />
                   {createStartEndMarkers(hike.route)}
-                  {createDestinationMarkers(hike.route)}
                 </MapContainer>
               </div>
             </div>
@@ -423,7 +439,11 @@ export default function HikeDetails() {
                 </div>
                 <div>
                   <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Duration</div>
-                  <div style={{ fontSize: 14, fontWeight: 500 }}>{hike.duration || 'Not specified'}</div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>
+                    {hike.isMultiDay && hike.durationDays 
+                      ? `${hike.durationDays} Day${hike.durationDays !== 1 ? 's' : ''}`
+                      : (hike.duration || 'Not specified')}
+                  </div>
                 </div>
                 <div>
                   <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Elevation Gain</div>

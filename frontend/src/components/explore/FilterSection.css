@@ -7,10 +7,7 @@
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
-.filter-sidebar {
-  position: sticky;
-  top: 32px;
-}
+/* The filter sidebar positioning is controlled at the page level (Explore.css). */
 
 .filter-header {
   display: flex;
@@ -39,6 +36,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .filter-group-label {
@@ -79,14 +78,16 @@
 /* Date Range */
 .date-range-wrapper {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  width: 100%;
 }
 
 .date-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .date-icon {
@@ -95,7 +96,8 @@
   top: 50%;
   transform: translateY(-50%);
   color: #059669;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
   z-index: 1;
 }
 
@@ -103,6 +105,29 @@
   width: 100%;
   padding: 10px 16px;
   padding-left: 40px;
+  min-width: 0;
+}
+
+/* Improve native date picker appearance consistency */
+.date-input[type="date"] {
+  color-scheme: light;
+}
+
+/* Hide the native right-side calendar icon; use the left one */
+.date-input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  right: 0;
+  width: 36px;
+  height: 100%;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Attempt to reduce native indicators across engines */
+.date-input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .date-input-wrapper .date-input {
@@ -114,38 +139,65 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .price-input {
   flex: 1;
+  min-width: 0;
   padding: 10px 16px;
+  box-sizing: border-box;
 }
 
 .price-arrow {
   font-size: 18px;
   color: #6b7280;
   font-weight: bold;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 /* Difficulty Checkboxes */
-.difficulty-checkboxes {
+.filter-section .difficulty-checkboxes {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.difficulty-checkbox {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
+.filter-section .difficulty-checkbox {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
   gap: 12px;
   cursor: pointer;
-  padding: 8px 0;
-  min-height: 32px;
+  padding: 0 !important;
   width: 100%;
+  border: none !important;
+  background: none !important;
+  background-color: transparent !important;
+  margin: 0;
+  transition: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
-.difficulty-checkbox input[type="checkbox"] {
+.filter-section .difficulty-checkbox:hover {
+  background: none !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.filter-section .difficulty-checkbox:focus-within {
+  outline: none !important;
+  background: none !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.filter-section .difficulty-checkbox input[type="checkbox"] {
   width: 18px;
   height: 18px;
   cursor: pointer;
@@ -157,39 +209,75 @@
   transition: border-color 0.15s ease;
 }
 
-.difficulty-checkbox input[type="checkbox"]:hover {
+.filter-section .difficulty-checkbox input[type="checkbox"]:hover {
   border-color: #10b981;
 }
-.difficulty-checkbox input[type="checkbox"]:checked {
+.filter-section .difficulty-checkbox input[type="checkbox"]:checked {
   border-color: #10b981;
 }
 
-.checkbox-input {
-  width: 18px;
-  height: 18px;
+.filter-section .checkbox-input {
+  width: 18px !important;
+  height: 18px !important;
   cursor: pointer;
   accent-color: #10b981;
-  border-radius: 4px;
-  border: 1px solid #d1d5db;
+  border-radius: 4px !important;
+  border: 1px solid #d1d5db !important;
   flex-shrink: 0;
   margin: 0;
   transition: border-color 0.15s ease;
+  padding: 0 !important;
+  background: white !important;
+  background-color: white !important;
 }
 
-.checkbox-input:hover {
-  border-color: #10b981;
+.filter-section .checkbox-input:hover {
+  border-color: #10b981 !important;
+  background: white !important;
+  background-color: white !important;
 }
 
-.checkbox-input:checked {
-  border-color: #10b981;
+.filter-section .checkbox-input:checked {
+  border-color: #10b981 !important;
+  background: white !important;
+  background-color: white !important;
 }
 
-.checkbox-label {
-  font-size: 14px;
-  color: #374151;
+.filter-section .difficulty-checkbox .checkbox-label,
+.filter-section .checkbox-label {
+  font-size: 14px !important;
+  color: #374151 !important;
   cursor: pointer;
-  line-height: 1.5;
+  line-height: 1.5 !important;
   user-select: none;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: none !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  font-weight: normal !important;
+  transition: none !important;
+  display: inline !important;
+  box-shadow: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  text-align: left !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.filter-section .difficulty-checkbox .checkbox-label:hover,
+.filter-section .checkbox-label:hover {
+  color: #374151 !important;
+  background: none !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 /* Filter Actions */

@@ -22,6 +22,29 @@ export default function FilterSection({
   onApplyFilters,
   isSidebar = false,
 }) {
+  const startRef = React.useRef(null);
+  const endRef = React.useRef(null);
+
+  const handleIconClick = (e, inputRef) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!inputRef.current) return;
+
+    setTimeout(() => {
+      const el = inputRef.current;
+      if (!el) return;
+      if (typeof el.showPicker === "function") {
+        try {
+          el.showPicker();
+          return;
+        } catch (err) {
+          // fallthrough to click
+        }
+      }
+      el.click();
+    }, 10);
+  };
   const difficultyOptions = [
     { value: "all", label: "(all)" },
     { value: "easy", label: "Easy" },
@@ -97,25 +120,47 @@ export default function FilterSection({
           <label className="filter-group-label">Date Range</label>
           <div className="date-range-wrapper">
             <div className="date-input-wrapper">
-              <Calendar className="date-icon" size={16} />
+              <Calendar
+                className="date-icon"
+                size={16}
+                role="button"
+                aria-label="Pick start date"
+                tabIndex={0}
+                onClick={(e) => handleIconClick(e, startRef)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    handleIconClick(e, startRef);
+                  }
+                }}
+              />
               <input
-                type="text"
+                type="date"
                 value={dateFrom}
                 onChange={(e) => onDateFromChange(e.target.value)}
                 className="filter-input date-input"
-                placeholder="mm/dd/yyyy"
-                pattern="\d{2}/\d{2}/\d{4}"
+                ref={startRef}
               />
             </div>
             <div className="date-input-wrapper">
-              <Calendar className="date-icon" size={16} />
+              <Calendar
+                className="date-icon"
+                size={16}
+                role="button"
+                aria-label="Pick end date"
+                tabIndex={0}
+                onClick={(e) => handleIconClick(e, endRef)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    handleIconClick(e, endRef);
+                  }
+                }}
+              />
               <input
-                type="text"
+                type="date"
                 value={dateTo}
                 onChange={(e) => onDateToChange(e.target.value)}
                 className="filter-input date-input"
-                placeholder="mm/dd/yyyy"
-                pattern="\d{2}/\d{2}/\d{4}"
+                ref={endRef}
               />
             </div>
           </div>
@@ -153,7 +198,7 @@ export default function FilterSection({
 
         {/* Difficulty */}
         <div className="filter-group">
-          <label className="filter-group-label">Difficulty</label>
+          <label className="filter-group-label">Difficulty Level</label>
           <div className="difficulty-checkboxes">
             {difficultyOptions.map((option) => (
               <label key={option.value} className="difficulty-checkbox">

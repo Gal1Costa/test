@@ -209,12 +209,38 @@ export default function GuideProfile() {
 
       const upcomingHikes = hikes.filter((h) => {
         if (!h.date) return false;
-        return new Date(h.date) >= now;
+        
+        // Combine date and meetingTime for accurate comparison
+        const hikeDate = new Date(h.date);
+        
+        // If meetingTime exists, combine it with the date
+        if (h.meetingTime) {
+          const [hours, minutes] = h.meetingTime.split(':').map(Number);
+          hikeDate.setHours(hours, minutes, 0, 0);
+        } else {
+          // If no time specified, set to end of day to keep upcoming
+          hikeDate.setHours(23, 59, 59, 999);
+        }
+        
+        return hikeDate >= now;
       });
 
       const pastHikes = hikes.filter((h) => {
         if (!h.date) return false;
-        return new Date(h.date) < now;
+        
+        // Combine date and meetingTime for accurate comparison
+        const hikeDate = new Date(h.date);
+        
+        // If meetingTime exists, combine it with the date
+        if (h.meetingTime) {
+          const [hours, minutes] = h.meetingTime.split(':').map(Number);
+          hikeDate.setHours(hours, minutes, 0, 0);
+        } else {
+          // If no time specified, set to end of day to keep upcoming
+          hikeDate.setHours(23, 59, 59, 999);
+        }
+        
+        return hikeDate < now;
       });
 
       setUpcoming(upcomingHikes);
