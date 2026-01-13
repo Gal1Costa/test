@@ -277,12 +277,13 @@ export default function BasicInformation({ value, onChange, errors = {} }) {
 
         <div className="field-error-container">
           <label>
-            <span className="label-text">Capacity</span>
+            <span className="label-text">Capacity <span style={{ color: '#e53e3e', fontWeight: 'bold' }}>*</span></span>
             <div className="input-wrapper">
-              <Users className="input-icon input-icon-optional" size={16} />
+              <Users className="input-icon" size={16} />
               <input
                 type="number"
                 min="1"
+                max="500"
                 value={value.capacity || ''}
                 onChange={update('capacity')}
                 placeholder="e.g., 30"

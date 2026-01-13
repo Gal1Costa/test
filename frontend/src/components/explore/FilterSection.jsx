@@ -46,7 +46,7 @@ export default function FilterSection({
     }, 10);
   };
   const difficultyOptions = [
-    { value: "all", label: "(all)" },
+    { value: "all", label: "all" },
     { value: "easy", label: "Easy" },
     { value: "moderate", label: "Moderate" },
     { value: "hard", label: "Hard" },

@@ -72,14 +72,13 @@ export default function Header({ onOpenAuthModal }) {
         {isGuide && (
           <>
             <Link to="/hikes/create">Create Hike</Link>
-            <Link to="/my-bookings">My Bookings</Link>
-            <Link to="/profile/guide">My Hikes</Link>
+            <Link to="/mytrails">My Trails</Link>
           </>
         )}
 
         {isHiker && (
           <>
-            <Link to="/my-bookings">My Bookings</Link>
+            <Link to="/mytrails">My Trails</Link>
           </>
         )}
 

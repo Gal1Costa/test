@@ -73,17 +73,25 @@ function readRouteFile(routePath) {
 async function readRouteAny(routePath) {
   if (!routePath || typeof routePath !== 'string') return null;
 
-  // If it's a URL (Spaces CDN), fetch it with timeout
+  // If it's a URL (Spaces CDN), fetch it with timeout and cache-busting
   if (/^https?:\/\//i.test(routePath)) {
     try {
+      // Add timestamp to bust cache
+      const separator = routePath.includes('?') ? '&' : '?';
+      const urlWithCacheBust = `${routePath}${separator}_t=${Date.now()}`;
+      
       // Use AbortController for timeout (10 seconds) - available in Node.js 18+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       
       try {
-        const r = await fetch(routePath, { 
+        const r = await fetch(urlWithCacheBust, { 
           signal: controller.signal,
-          headers: { 'Accept': 'application/json' }
+          headers: { 
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
         });
         
         clearTimeout(timeoutId);
@@ -94,6 +102,13 @@ async function readRouteAny(routePath) {
         }
         
         const data = await r.json();
+        console.log(`[readRouteAny] Successfully fetched route from CDN:`, {
+          url: routePath,
+          hasPoints: !!data?.points,
+          pointsLength: data?.points?.length,
+          hasDestinations: !!data?.destinations,
+          mapMode: data?.mapMode
+        });
         return data;
       } catch (fetchError) {
         clearTimeout(timeoutId);
@@ -247,6 +262,14 @@ router.get('/:id', async (req, res, next) => {
     const row = await repo.getHikeById(req.params.id);
     if (!row) return send404(res);
 
+    console.log(`[GET /:id] Retrieved hike ${req.params.id}:`, {
+      id: row.id,
+      title: row.title || row.name,
+      routePath: row.routePath,
+      coverUrl: row.coverUrl,
+      imageUrl: row.imageUrl
+    });
+
     // Try to load route data, but don't fail if it's unavailable
     let route = [];
     let destinations = null;
@@ -254,21 +277,59 @@ router.get('/:id', async (req, res, next) => {
     let mapLocation = null;
 
     if (row.routePath) {
+      console.log(`[GET /:id] Found routePath, loading from: ${row.routePath}`);
       try {
         const routeData = await readRouteAny(row.routePath);
+        console.log(`[GET /:id] readRouteAny returned:`, routeData ? { 
+          hasPoints: !!routeData.points, 
+          pointsLength: routeData.points?.length,
+          hasDestinations: !!routeData.destinations,
+          destinationsLength: routeData.destinations?.length,
+          mapMode: routeData.mapMode,
+          firstPoint: routeData.points?.[0]
+        } : 'null');
+        
         if (routeData) {
           route = routeData.points ?? [];
           destinations = routeData.destinations ?? null;
           mapMode = routeData.mapMode ?? null;
           mapLocation = routeData.mapLocation ?? null;
+          console.log(`[GET /:id] Successfully loaded route:`, { 
+            routeLength: route.length, 
+            mapMode, 
+            destinationsLength: destinations?.length,
+            routeSample: route.slice(0, 2)
+          });
+        } else {
+          console.warn(`[GET /:id] routeData was null from readRouteAny`);
         }
       } catch (routeError) {
-        console.warn(`[hikes/controller] Error loading route for hike ${req.params.id}:`, routeError.message);
+        console.error(`[GET /:id] Error loading route for hike ${req.params.id}:`, routeError);
         // Continue with empty route data - hike can still be returned
       }
+    } else {
+      console.log(`[GET /:id] No routePath found in hike record`);
     }
 
-    res.json({ ...row, route, destinations, mapMode, mapLocation });
+    const responseData = { 
+      ...row, 
+      route, 
+      destinations, 
+      mapMode, 
+      mapLocation 
+    };
+    
+    console.log(`[GET /:id] Sending response:`, { 
+      id: responseData.id,
+      hasRoute: !!responseData.route && responseData.route.length > 0,
+      routeLength: responseData.route?.length,
+      hasDestinations: !!responseData.destinations,
+      destinationsLength: responseData.destinations?.length,
+      mapMode: responseData.mapMode,
+      routePath: responseData.routePath
+    });
+    
+    res.json(responseData);
   } catch (err) { 
     console.error(`[hikes/controller] Error in GET /:id for ${req.params.id}:`, err);
     next(err); 
@@ -464,6 +525,8 @@ router.post('/', upload.fields([{ name: 'cover' }]), async (req, res, next) => {
 
 // PUT /api/hikes/:id  (multipart: cover image; optionally updates route/mapLocation JSON file)
 router.put('/:id', upload.fields([{ name: 'cover' }]), async (req, res, next) => {
+    console.log(`[PUT /:id] Updating hike ${req.params.id}`);
+    
   try {
     if (!repo?.updateHike) return send501(res, 'updateHike not implemented');
 
@@ -507,8 +570,17 @@ router.put('/:id', upload.fields([{ name: 'cover' }]), async (req, res, next) =>
     if (body.whatToBring !== undefined) data.whatToBring = body.whatToBring || null;
     if (body.location) data.location = body.location;
 
+    // Get current hike to access old coverUrl before updating
+    const currentHike = await repo.getHikeById(req.params.id);
+    
     // Handle cover upload (Spaces preferred, Firebase fallback)
     const adapters = req.app?.locals?.adapters || {};
+    
+    // Pass old cover URL so it can be deleted if new one is uploaded
+    if (currentHike?.coverUrl && req.files?.cover?.length > 0) {
+      data.oldCoverUrl = currentHike.coverUrl;
+    }
+    
     await handleFileUploads({
       files: req.files,
       data,
@@ -534,7 +606,15 @@ router.put('/:id', upload.fields([{ name: 'cover' }]), async (req, res, next) =>
     const hike = await repo.getHikeById(req.params.id);
     if (!hike || hike.guideId !== profile.guide.id) return send403(res, 'You can only edit your own hikes');
 
-    const updated = await repo.updateHike(req.params.id, data);
+    let updated = await repo.updateHike(req.params.id, data);
+    
+    console.log(`[PUT /:id] Hike updated successfully:`, {
+      id: updated.id,
+      title: updated.title || updated.name,
+      coverUrl: updated.coverUrl,
+      imageUrl: updated.imageUrl,
+      hasCoverFile: !!req.files?.cover?.length
+    });
 
     // If route was provided, save/overwrite route file and store routePath
     // Check for both simple mode (routePoints) and destinations mode (destinations)
@@ -544,11 +624,28 @@ router.put('/:id', upload.fields([{ name: 'cover' }]), async (req, res, next) =>
       const hasSimpleRoute = Array.isArray(routePoints) && routePoints.length > 0;
       const hasDestinationsRoute = mapMode === 'destinations' && Array.isArray(destinations) && destinations.length > 0;
       
+      console.log(`[PUT /:id] Route update check:`, {
+        hasSimpleRoute,
+        hasDestinationsRoute,
+        mapMode,
+        routePointsCount: routePoints?.length,
+        destinationsCount: destinations?.length
+      });
+      
       if (hasSimpleRoute || hasDestinationsRoute) {
         // For destinations mode, convert to points format for storage, but also preserve destinations
         const pointsToStore = mapMode === 'destinations' ? pointsForDistance : routePoints;
         const destinationsToStore = mapMode === 'destinations' ? destinations : null;
 
+        console.log(`[PUT /:id] Saving route to storage:`, { 
+          hasSimpleRoute, 
+          hasDestinationsRoute, 
+          pointsCount: pointsToStore?.length, 
+          destinationsCount: destinationsToStore?.length,
+          pointsData: pointsToStore,
+          destinationsData: destinationsToStore
+        });
+        
         routePath = await saveRouteToStorage({
           hikeId: req.params.id,
           mapLocation,
@@ -557,7 +654,12 @@ router.put('/:id', upload.fields([{ name: 'cover' }]), async (req, res, next) =>
           mapMode: mapMode,
           storageAdapter: adapters.spacesStorage || null,
         });
-        await repo.updateHike(req.params.id, { routePath });
+        
+        console.log(`[PUT /:id] Route saved to: ${routePath}, updating database...`);
+        updated = await repo.updateHike(req.params.id, { routePath });
+        console.log(`[PUT /:id] Database updated, new routePath in DB:`, updated?.routePath);
+      } else {
+        console.log(`[PUT /:id] No route update provided, keeping existing routePath:`, routePath);
       }
     } catch (routeSaveError) {
       console.error('[hikes/controller] Error saving route in PUT:', routeSaveError);
@@ -593,14 +695,26 @@ router.put('/:id', upload.fields([{ name: 'cover' }]), async (req, res, next) =>
       }
     }
 
-    return res.json({
+    const responseData = {
       ...updated,
       routePath: routePath || updated.routePath || null,
       route: routeResponse,
       destinations: destinationsResponse,
       mapMode: mapModeResponse,
       mapLocation: mapLocation ?? (updated.mapLocation ?? null),
+    };
+    
+    console.log(`[PUT /:id] Sending response:`, {
+      id: responseData.id,
+      hasRoute: responseData.route?.length > 0,
+      routeLength: responseData.route?.length,
+      hasDestinations: responseData.destinations?.length > 0,
+      destinationsLength: responseData.destinations?.length,
+      mapMode: responseData.mapMode,
+      routePath: responseData.routePath
     });
+
+    return res.json(responseData);
   } catch (err) { next(err); }
 });
 

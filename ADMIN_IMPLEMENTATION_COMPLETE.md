@@ -98,9 +98,8 @@ User visits /admin/access
 
 **Hikes Page**
 - Searchable, paginated list
-- Shows: title, guide name, date, participants, distance, status
+- Shows: title, guide name, date, participants, distance
 - Actions:
-  - Toggle cancel/reinstate status
   - Delete (requires typing "DELETE")
   - View link to public hike page
 
@@ -155,7 +154,7 @@ All calls use `baseURL="/api"`:
 - Protected by requireRole(['admin'])
 
 **PATCH /api/admin/hikes/:id**
-- Can update: title, description, difficulty, distance, duration, price, capacity, location, date, meetingTime, meetingPlace, elevationGain, whatToBring, coverUrl, routePath, isCancelled
+- Can update: title, description, difficulty, distance, duration, price, capacity, location, date, meetingTime, meetingPlace, elevationGain, whatToBring, coverUrl, routePath
 - Protected by requireRole(['admin'])
 
 **DELETE /api/admin/hikes/:id**

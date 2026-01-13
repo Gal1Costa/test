@@ -87,7 +87,6 @@ model Hike {
   whatToBring   String?
   routePath     String?
   coverUrl      String?
-  isCancelled   Boolean         @default(false)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   guideId       String

@@ -132,11 +132,13 @@ export function validateHikeForm(formData) {
   }
   
   
-  // Capacity validation (optional, can be 0, but must be valid if provided)
-  if (basic.capacity !== undefined && basic.capacity !== null && basic.capacity !== '') {
+  // Capacity validation (REQUIRED, must be 1 or greater)
+  if (basic.capacity === undefined || basic.capacity === null || basic.capacity === '') {
+    basicErrors.capacity = 'Capacity is required';
+  } else {
     const capacity = Number(basic.capacity);
-    if (isNaN(capacity) || capacity < 0) {
-      basicErrors.capacity = 'Capacity must be 0 or greater';
+    if (isNaN(capacity) || capacity < 1) {
+      basicErrors.capacity = 'Capacity must be at least 1';
     } else if (capacity > 500) {
       basicErrors.capacity = 'Capacity must be less than 500';
     }
@@ -202,8 +204,20 @@ export function validateHikeForm(formData) {
     // Single-day: validate durationHours
     const durationHours = trail.durationHours !== undefined ? trail.durationHours : trail.duration;
     if (durationHours !== undefined && durationHours !== null && durationHours !== '') {
-      const hoursNum = typeof durationHours === 'number' ? durationHours : Number(durationHours);
-      if (isNaN(hoursNum) || hoursNum < 0) {
+      // Handle both numeric and string formats (e.g., "4-5 hours", "4 hours")
+      let hoursNum = null;
+      
+      if (typeof durationHours === 'number') {
+        hoursNum = durationHours;
+      } else {
+        // Extract the first number from string like "4-5 hours" or "4 hours"
+        const match = String(durationHours).match(/^(\d+(?:\.\d+)?)/);
+        if (match) {
+          hoursNum = parseFloat(match[1]);
+        }
+      }
+      
+      if (hoursNum === null || isNaN(hoursNum) || hoursNum < 0) {
         trailErrors.durationHours = 'Duration must be a positive number';
       } else if (hoursNum > 24) {
         trailErrors.durationHours = 'Duration must be less than 24 hours for single-day hikes';
@@ -356,8 +370,8 @@ export function validateField(section, fieldName, value, allFormData = {}) {
         case 'capacity':
           if (value !== undefined && value !== null && value !== '') {
             const capNum = Number(value);
-            if (isNaN(capNum) || capNum < 0) {
-              return 'Capacity must be 0 or greater';
+            if (isNaN(capNum) || capNum < 1) {
+              return 'Capacity must be at least 1';
             }
             if (capNum > 500) {
               return 'Capacity must be less than 500';

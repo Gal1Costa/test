@@ -18,7 +18,7 @@ export default function SearchBar({ value, onChange, onSearch }) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Search hikes (title, location, etc.)"
+          placeholder="Search hikes (title, location)"
           className="search-input"
         />
       </div>

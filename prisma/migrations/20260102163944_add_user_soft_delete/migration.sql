@@ -10,13 +10,13 @@
 CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'DELETED');
 
 -- AlterTable
-ALTER TABLE "Hike" DROP COLUMN "mapLocation",
-DROP COLUMN "route",
-ADD COLUMN     "isCancelled" BOOLEAN NOT NULL DEFAULT false;
+-- ALTER TABLE "Hike" DROP COLUMN "mapLocation",
+--DROP COLUMN "route",
+--ADD COLUMN     "isCancelled" BOOLEAN NOT NULL DEFAULT false;
 
 -- AlterTable
-ALTER TABLE "Review" ADD COLUMN     "hikeId" TEXT NOT NULL,
-ADD COLUMN     "tags" TEXT[];
+-- ALTER TABLE "Review"
+-- ADD COLUMN     "tags" TEXT[];
 
 -- AlterTable
 ALTER TABLE "User" ADD COLUMN     "anonymizedAt" TIMESTAMP(3),
@@ -24,19 +24,19 @@ ADD COLUMN     "deletedAt" TIMESTAMP(3),
 ADD COLUMN     "isDeleted" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN     "status" "UserStatus" NOT NULL DEFAULT 'ACTIVE';
 
--- CreateTable
-CREATE TABLE "AuditLog" (
-    "id" TEXT NOT NULL,
-    "actorId" TEXT,
-    "actorEmail" TEXT,
-    "action" TEXT NOT NULL,
-    "resource" TEXT,
-    "resourceId" TEXT,
-    "details" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+-- -- CreateTable
+-- CREATE TABLE "AuditLog" (
+--     "id" TEXT NOT NULL,
+--     "actorId" TEXT,
+--     "actorEmail" TEXT,
+--     "action" TEXT NOT NULL,
+--     "resource" TEXT,
+--     "resourceId" TEXT,
+--     "details" TEXT,
+--     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
-);
+--     CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
+-- );
 
--- AddForeignKey
-ALTER TABLE "Review" ADD CONSTRAINT "Review_hikeId_fkey" FOREIGN KEY ("hikeId") REFERENCES "Hike"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+-- -- AddForeignKey
+-- ALTER TABLE "Review" ADD CONSTRAINT "Review_hikeId_fkey" FOREIGN KEY ("hikeId") REFERENCES "Hike"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

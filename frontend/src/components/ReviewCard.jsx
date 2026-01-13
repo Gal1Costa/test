@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import api from '../api';
 import './ReviewCard.css';
 
-export default function ReviewCard({ hikeId, guideId, guideName, onSubmitted }) {
+export default function ReviewCard({ hikeId, guideId, guideName, onSubmitted, hasReviewed = false }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [tags, setTags] = useState([]);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [submitted, setSubmitted] = useState(hasReviewed);
 
   const quickTags = ['Friendly', 'Knowledgeable', 'Good pace', 'Great route', 'Safety-focused'];
 
@@ -16,7 +16,7 @@ export default function ReviewCard({ hikeId, guideId, guideName, onSubmitted }) 
   }
 
   async function handleSubmit() {
-    if (!rating || submitting) return;
+    if (!rating || submitting || submitted) return; // Prevent resubmission
 
     setSubmitting(true);
     try {
@@ -29,7 +29,10 @@ export default function ReviewCard({ hikeId, guideId, guideName, onSubmitted }) 
         tags: tags, // [] if none selected
       });
 
-      setDone(true);
+      setSubmitted(true);
+      if (onSubmitted) {
+        onSubmitted();
+      }
     } catch (e) {
       console.error('Failed to submit review', e);
       alert(e?.response?.data?.error || e?.message || 'Failed to submit review');
@@ -38,19 +41,16 @@ export default function ReviewCard({ hikeId, guideId, guideName, onSubmitted }) 
     }
   }
 
-  useEffect(() => {
-    if (done && onSubmitted) {
-      const timer = setTimeout(() => onSubmitted(), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [done, onSubmitted]);
-
-  if (done) {
+  // Show permanent success state if already reviewed
+  if (submitted) {
     return (
-      <div className="review-success-card">
-        <span style={{ fontSize: '22px' }}>✅</span>
-        <div className="review-success-text">
-          <strong>Thanks!</strong> Your review helps others choose a guide.
+      <div className="review-success-container">
+        <div className="review-success-card">
+          <div className="success-icon">✅</div>
+          <div className="success-content">
+            <h4 className="success-title">Review Submitted</h4>
+            <p className="success-message">Thank you for your feedback! Your review helps other hikers choose the right guide.</p>
+          </div>
         </div>
       </div>
     );
