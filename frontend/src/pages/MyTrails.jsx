@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { auth, onAuthStateChanged } from "../firebase";
 import api from '../api';
+import MyTrailsHikeCard from '../components/MyTrailsHikeCard';
 import './MyTrails.css';
 
 export default function MyTrails() {
@@ -11,6 +13,16 @@ export default function MyTrails() {
   const [checkedItems, setCheckedItems] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [user, setUser] = useState(auth.currentUser);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+  const unsub = onAuthStateChanged(auth, (u) => {
+    setUser(u);
+    setAuthReady(true);
+  });
+  return () => unsub();
+}, []);
 
   // Fetch user's upcoming bookings/hikes
   useEffect(() => {
@@ -76,6 +88,12 @@ export default function MyTrails() {
               text: item.trim(),
             }));
             setChecklist(itemsArray);
+            
+            // Load checklist state from localStorage
+            const savedChecklistState = localStorage.getItem(`checklist-${primaryHikeData.id}`);
+            if (savedChecklistState) {
+              setCheckedItems(JSON.parse(savedChecklistState));
+            }
           }
           setError(null);
         } else {
@@ -88,15 +106,21 @@ export default function MyTrails() {
         setLoading(false);
       }
     };
+    if (!authReady || !user) return;
     fetchMyTrails();
-  }, []);
+  }, [authReady, user]);
 
-  // Toggle checklist item
+  // Toggle checklist item and save to localStorage
   const toggleChecklistItem = (id) => {
-    setCheckedItems(prev => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
+    const updatedChecklist = {
+      ...checkedItems,
+      [id]: !checkedItems[id],
+    };
+    setCheckedItems(updatedChecklist);
+    // Save to localStorage
+    if (primaryHike) {
+      localStorage.setItem(`checklist-${primaryHike.id}`, JSON.stringify(updatedChecklist));
+    }
   };
 
   const progressCount = Object.values(checkedItems).filter(Boolean).length;
@@ -230,38 +254,7 @@ export default function MyTrails() {
 
           <div className="mytrails-horizontal-scroll">
             {otherHikes.map(booking => (
-              <div key={booking.id} className="trail-card">
-                <div className="trail-image-container">
-                  {booking.hike.coverUrl && (
-                    <img
-                      src={booking.hike.coverUrl}
-                      alt={booking.hike.title}
-                      className="trail-image"
-                    />
-                  )}
-                  <div className="trail-overlay">
-                    <div className="trail-badge">
-                      <span className="badge-text">
-                        {getDaysUntilEvent(booking.hike.date)}
-                      </span>
-                    </div>
-
-                    <div className="trail-content">
-                      <h3 className="trail-title">{booking.hike.title}</h3>
-                      <div className="trail-details">
-                        <span className="detail-item">📅 {new Date(booking.hike.date).toLocaleDateString()}</span>
-                        <span className="detail-item">📍 {booking.hike.location}</span>
-                      </div>
-                      <button
-                        onClick={() => navigate(`/hikes/${booking.hike.id}`)}
-                        className="view-details-btn"
-                      >
-                        VIEW DETAILS
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <MyTrailsHikeCard key={booking.id} hike={booking.hike} />
             ))}
           </div>
         </div>
