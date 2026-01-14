@@ -8,6 +8,9 @@
   transition: all 0.3s ease;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   color: #111827;
+  width: 100%; /* ← ADD THIS: Ensure full width of grid cell */
+  height: 100%; /* ← ADD THIS: Consistent height */
+  box-sizing: border-box; /* ← ADD THIS: Include padding/border in width */
 }
 
 .hike-card .detail-item {
