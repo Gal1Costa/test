@@ -62,7 +62,12 @@ export default function Header({ onOpenAuthModal }) {
     try {
       await auth.signOut();
       setUserRole(null);
-      navigate('/explore');
+      // Redirect based on previous role
+      if (userRole === 'admin') {
+        navigate('/admin/access');
+      } else {
+        navigate('/explore');
+      }
     } catch (err) {
       console.error('Sign-out failed:', err);
       alert(err.message || 'Sign-out failed');
@@ -72,30 +77,33 @@ export default function Header({ onOpenAuthModal }) {
   const isVisitor = !user;
   const isGuide = userRole === 'guide';
   const isHiker = userRole === 'hiker';
+  const isAdmin = userRole === 'admin';
 
   return (
     <header className="header">
       <div className="header-left">
-        <Link to="/explore" className="logo">TrailHub</Link>
+        <Link to={isAdmin ? "/admin" : "/explore"} className="logo">TrailHub</Link>
       </div>
 
-      <nav className="nav-links">
-        <Link to="/explore">Home</Link>
+      {!isAdmin && (
+        <nav className="nav-links">
+          <Link to="/explore">Home</Link>
 
-        {isGuide && (
-          <>
-            <Link to="/hikes/create">Create Hike</Link>
-            <Link to="/mytrails">My Trails</Link>
-          </>
-        )}
+          {isGuide && (
+            <>
+              <Link to="/hikes/create">Create Hike</Link>
+              <Link to="/mytrails">My Trails</Link>
+            </>
+          )}
 
-        {isHiker && (
-          <>
-            <Link to="/mytrails">My Trails</Link>
-          </>
-        )}
+          {isHiker && (
+            <>
+              <Link to="/mytrails">My Trails</Link>
+            </>
+          )}
 
-      </nav>
+        </nav>
+      )}
 
       <div className="header-right">
         {isVisitor && (
@@ -111,15 +119,17 @@ export default function Header({ onOpenAuthModal }) {
 
         {!isVisitor && (
           <>
-            <Link to={isGuide ? "/profile/guide" : "/profile/hiker"} className="profile-icon-link">
-              {user?.photoURL ? (
-                <img src={user.photoURL} alt="profile" className="profile-avatar" />
-              ) : (
-                <div className="profile-avatar-placeholder">
-                  {(user?.displayName?.[0] || user?.email?.[0] || 'U')}
-                </div>
-              )}
-            </Link>
+            {!isAdmin && (
+              <Link to={isGuide ? "/profile/guide" : "/profile/hiker"} className="profile-icon-link">
+                {user?.photoURL ? (
+                  <img src={user.photoURL} alt="profile" className="profile-avatar" />
+                ) : (
+                  <div className="profile-avatar-placeholder">
+                    {(user?.displayName?.[0] || user?.email?.[0] || 'U')}
+                  </div>
+                )}
+              </Link>
+            )}
 
             <button onClick={handleSignOut} className="btn-signout">
               Sign Out

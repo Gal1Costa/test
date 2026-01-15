@@ -95,7 +95,7 @@ export default function AdminAccess() {
         window.dispatchEvent(new CustomEvent('admin:signedin', { detail: { user: { email } } }));
       } catch (e) {}
 
-      navigate('/admin', { replace: true });
+      navigate('/admin/dashboard', { replace: true });
     } catch (err) {
       setError(err?.message || 'Sign-in failed');
     } finally {
@@ -104,7 +104,7 @@ export default function AdminAccess() {
   };
 
   if (checking) return <LoadingSkeleton rows={3} cols={2} />;
-  if (isAdmin) return <Navigate to="/admin" replace />;
+  if (isAdmin) return <Navigate to="/admin/dashboard" replace />;
 
   return (
     <div className="admin-access-bg">

@@ -49,3 +49,13 @@ export async function deleteGuide(id) {
   const res = await api.delete(`/admin/guides/${id}`);
   return res.status === 204 ? { ok: true } : res.data;
 }
+
+export async function getHikeParticipants(hikeId) {
+  const res = await api.get(`/admin/hikes/${hikeId}/participants`);
+  return res.data;
+}
+
+export async function deleteBooking(bookingId) {
+  const res = await api.delete(`/admin/bookings/${bookingId}`);
+  return res.status === 204 ? { ok: true } : res.data;
+}

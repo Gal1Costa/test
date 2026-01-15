@@ -308,15 +308,11 @@ export default function EditHikeForm({ hike, onSave, onCancel, onDelete, deletin
         hasCoverUrl: !!response.data.coverUrl
       });
       
-      // Success - show message
-      setSuccessMessage('Hike updated successfully! ✓');
       setSubmitting(false);
       
-      // Brief delay to show success message before closing
-      setTimeout(() => {
-        console.log('[EditHikeForm] Calling onSave callback to reload page');
-        onSave?.();
-      }, 600);
+      // Call onSave callback immediately to trigger parent reload/navigation
+      console.log('[EditHikeForm] Calling onSave callback');
+      onSave?.();
     } catch (e) {
       console.error('Edit hike failed:', e);
       setErr(e?.response?.data?.error || e?.response?.data?.message || e.message || 'Failed to update hike');

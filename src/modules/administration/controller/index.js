@@ -49,12 +49,6 @@ router.get('/analytics', requireRole(['admin']), async (req, res, next) => {
       prisma.user.count({ where: { role: 'hiker', createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } } }),
     ]);
 
-    // Total deleted users (all time)
-    const [deletedUsersThisMonth, deletedUsersLastMonth] = await Promise.all([
-      prisma.user.count({ where: { status: 'DELETED' } }),
-      prisma.user.count({ where: { status: 'DELETED' } }),
-    ]);
-
     // Daily data for the last 30 days
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     
@@ -71,14 +65,6 @@ router.get('/analytics', requireRole(['admin']), async (req, res, next) => {
         prisma.user.count({ where: { role: 'hiker', createdAt: { gte: dayStart, lte: dayEnd } } }),
       ]);
 
-      // Get cumulative deleted users up to this day
-      const deletedUsers = await prisma.user.count({ 
-        where: { 
-          status: 'DELETED',
-          createdAt: { lte: dayEnd } // Count all deleted users created up to this day
-        } 
-      });
-
       dailyData.push({
         date: dayStart.toISOString().split('T')[0],
         users,
@@ -86,7 +72,6 @@ router.get('/analytics', requireRole(['admin']), async (req, res, next) => {
         bookings,
         guides,
         hikers,
-        deletedUsers,
       });
     }
 
@@ -96,16 +81,14 @@ router.get('/analytics', requireRole(['admin']), async (req, res, next) => {
         hikes: hikesThisMonth, 
         bookings: bookingsThisMonth,
         guides: guidesThisMonth,
-        hikers: hikersThisMonth,
-        deletedUsers: deletedUsersThisMonth
+        hikers: hikersThisMonth
       },
       lastMonth: { 
         users: usersLastMonth, 
         hikes: hikesLastMonth, 
         bookings: bookingsLastMonth,
         guides: guidesLastMonth,
-        hikers: hikersLastMonth,
-        deletedUsers: deletedUsersLastMonth
+        hikers: hikersLastMonth
       },
       dailyData,
     });
@@ -121,12 +104,15 @@ router.get('/users', requireRole(['admin']), async (req, res, next) => {
     const pageSize = Math.min(200, Math.max(5, parseInt(req.query.pageSize, 10) || 20));
     const q = (req.query.q || '').trim();
 
-    const where = q ? {
-      OR: [
-        { name: { contains: q, mode: 'insensitive' } },
-        { email: { contains: q, mode: 'insensitive' } },
-      ],
-    } : {};
+    const where = {
+      role: { not: 'admin' }, // Exclude admin users from the list
+      ...(q ? {
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { email: { contains: q, mode: 'insensitive' } },
+        ],
+      } : {}),
+    };
 
     const [total, items] = await Promise.all([
       prisma.user.count({ where }),
@@ -369,6 +355,57 @@ router.patch('/users/:id', requireRole(['admin']), async (req, res, next) => {
       await recordAudit({ actorId: req.user?.id || null, actorEmail: req.user?.email || null, action: 'update_user', resource: 'user', resourceId: id, details: data });
     } catch (e) {}
     res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/hikes/:id/participants -> get list of participants (bookings) for a hike
+router.get('/hikes/:id/participants', requireRole(['admin']), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const bookings = await prisma.booking.findMany({
+      where: { hikeId: id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    const participants = bookings.map(b => ({
+      id: b.id,
+      bookingId: b.id,
+      userId: b.user?.id || null,
+      name: b.user?.name || 'Unknown',
+      email: b.user?.email || 'N/A',
+      role: b.user?.role || null,
+      status: b.status,
+      createdAt: b.createdAt,
+    }));
+
+    res.json({ participants });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/admin/bookings/:id -> admin can remove a booking (participant from hike)
+router.delete('/bookings/:id', requireRole(['admin']), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await prisma.booking.delete({ where: { id } });
+    try {
+      await recordAudit({ actorId: req.user?.id || null, actorEmail: req.user?.email || null, action: 'delete_booking', resource: 'booking', resourceId: id });
+    } catch (e) {}
+    res.status(204).send();
   } catch (err) {
     next(err);
   }

@@ -32,15 +32,14 @@ export default function HikeEdit() {
     }
   };
 
-  const handleSave = async (updatedData) => {
+  const handleSave = async () => {
+    // EditHikeForm handles the save internally, just reload data
     try {
-      await api.patch(`/hikes/${id}`, updatedData);
+      await loadHike(); // Reload hike data after successful save
       showToast('Hike updated successfully', 'success');
-      await loadHike(); // Reload hike data
     } catch (err) {
-      console.error('Failed to update hike', err);
-      showToast('Failed to update hike', 'error');
-      throw err;
+      console.error('Failed to reload hike', err);
+      // Don't show error toast here as EditHikeForm already handles errors
     }
   };
 

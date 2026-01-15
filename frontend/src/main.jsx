@@ -1,7 +1,7 @@
 import "leaflet/dist/leaflet.css";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 import Explore from "./pages/Explore";
 import MyTrails from "./pages/MyTrails";
@@ -13,6 +13,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminAccess from "./pages/admin/AdminAccess";
 import AdminLayout from "./pages/admin/layouts/AdminLayout";
 import AdminRoute from "./pages/admin/AdminRoute";
+import ProtectedRoute from "./pages/ProtectedRoute";
 import HikesAdmin from "./pages/admin/Hikes";
 import HikeEdit from "./pages/admin/HikeEdit";
 import UsersAdmin from "./pages/admin/Users";
@@ -103,21 +104,38 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh" }}>
-        {/* Hide main site header when browsing admin pages */}
-        {typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin') && (
-          <Header onOpenAuthModal={handleOpenAuthModal} />
-        )}
+      <AppContent 
+        handleOpenAuthModal={handleOpenAuthModal}
+        modalOpen={modalOpen}
+        setModalOpen={setModalOpen}
+        modalTab={modalTab}
+        modalKey={modalKey}
+        toast={toast}
+      />
+    </BrowserRouter>
+  );
+}
 
-        <div style={{ padding: 20 }}>
+function AppContent({ handleOpenAuthModal, modalOpen, setModalOpen, modalTab, modalKey, toast }) {
+  const location = useLocation();
+  const isAdminPage = location.pathname.startsWith('/admin');
 
-          <Routes>
+  return (
+    <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh" }}>
+      {/* Hide main site header when browsing admin pages */}
+      {!isAdminPage && (
+        <Header onOpenAuthModal={handleOpenAuthModal} />
+      )}
+
+      <div style={{ padding: 20 }}>
+
+        <Routes>
             <Route path="/admin/access" element={<AdminAccess />} />
 
               <Route path="/admin/dev-login" element={<AdminDevLogin />} />
 
             <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-              <Route index element={<Navigate to="/admin/dashboard" replace />} />
+              <Route index element={<Navigate to="/admin/access" replace />} />
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="analytics" element={<Analytics />} />
               <Route path="audit" element={<AdminAudit />} />
@@ -130,14 +148,14 @@ function App() {
             {/* redirect root to /explore */}
             <Route path="/" element={<Navigate to="/explore" replace />} />
 
-            {/* main pages */}
-            <Route path="/explore" element={<Explore />} />
-            <Route path="/mytrails" element={<MyTrails />} />
-            <Route path="/profile" element={<Navigate to="/profile/hiker" replace />} />
-            <Route path="/profile/hiker" element={<HikerProfile />} />
-            <Route path="/profile/guide" element={<GuideProfile />} />
-            <Route path="/hikes/:id" element={<HikeDetails />} />
-            <Route path="/hikes/create" element={<CreateHike />} />
+            {/* main pages - protected from admin access */}
+            <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />
+            <Route path="/mytrails" element={<ProtectedRoute><MyTrails /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Navigate to="/profile/hiker" replace /></ProtectedRoute>} />
+            <Route path="/profile/hiker" element={<ProtectedRoute><HikerProfile /></ProtectedRoute>} />
+            <Route path="/profile/guide" element={<ProtectedRoute><GuideProfile /></ProtectedRoute>} />
+            <Route path="/hikes/:id" element={<ProtectedRoute><HikeDetails /></ProtectedRoute>} />
+            <Route path="/hikes/create" element={<ProtectedRoute><CreateHike /></ProtectedRoute>} />
 
             {/* catch-all → back to explore */}
             <Route path="*" element={<Navigate to="/explore" replace />} />
@@ -154,8 +172,7 @@ function App() {
         )}
         <Toast toast={toast} />
       </div>
-    </BrowserRouter>
-  );
+    );
 }
 
 const root = createRoot(document.getElementById("root"));

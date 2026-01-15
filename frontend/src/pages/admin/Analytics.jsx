@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import api from '../../api';
 import './admin.css';
 import LoadingSkeleton from './components/LoadingSkeleton';
@@ -56,7 +56,40 @@ export default function Analytics() {
   const bookingChange = calculateChange(thisMonth.bookings, lastMonth.bookings);
   const guideChange = calculateChange(thisMonth.guides, lastMonth.guides);
   const hikerChange = calculateChange(thisMonth.hikers, lastMonth.hikers);
-  const deletedUserChange = calculateChange(thisMonth.deletedUsers, lastMonth.deletedUsers);
+
+  // Prepare pie chart data
+  const userRoleData = [
+    { name: 'Guides', value: thisMonth.guides, color: '#8b5cf6' },
+    { name: 'Hikers', value: thisMonth.hikers, color: '#06b6d4' }
+  ].filter(item => item.value > 0);
+
+  const activityData = [
+    { name: 'New Users', value: thisMonth.users, color: '#2563eb' },
+    { name: 'New Hikes', value: thisMonth.hikes, color: '#16a34a' },
+    { name: 'New Bookings', value: thisMonth.bookings, color: '#ea580c' }
+  ].filter(item => item.value > 0);
+
+  const COLORS = ['#2563eb', '#8b5cf6', '#06b6d4', '#16a34a', '#ea580c', '#94a3b8'];
+
+  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+      <text 
+        x={x} 
+        y={y} 
+        fill="white" 
+        textAnchor={x > cx ? 'start' : 'end'} 
+        dominantBaseline="central"
+        style={{ fontSize: 14, fontWeight: 'bold' }}
+      >
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
 
   return (
     <div className="admin-analytics">
@@ -159,21 +192,56 @@ export default function Analytics() {
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="analytics-card">
-          <div className="analytics-card-header">
-            <h3>Deleted Users</h3>
-            <span className="analytics-period">This Month</span>
-          </div>
-          <div className="analytics-card-body">
-            <div className="analytics-value">{thisMonth.deletedUsers}</div>
-            <div className="analytics-comparison">
-              <span className="analytics-label">Last Month: {lastMonth.deletedUsers}</span>
-              <span className={`analytics-change ${parseFloat(deletedUserChange) >= 0 ? 'negative' : 'positive'}`}>
-                {parseFloat(deletedUserChange) >= 0 ? '↑' : '↓'} {Math.abs(deletedUserChange)}%
-              </span>
-            </div>
-          </div>
+      {/* Pie Charts */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 20, marginBottom: 32 }}>
+        <div className="analytics-card" style={{ padding: 20 }}>
+          <h3 style={{ marginBottom: 16, textAlign: 'center' }}>User Distribution by Role</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={userRoleData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={renderCustomLabel}
+                outerRadius={100}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {userRoleData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="analytics-card" style={{ padding: 20 }}>
+          <h3 style={{ marginBottom: 16, textAlign: 'center' }}>Activity Overview (This Month)</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={activityData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={renderCustomLabel}
+                outerRadius={100}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {activityData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
@@ -414,53 +482,6 @@ export default function Analytics() {
           </ResponsiveContainer>
         </div>
 
-        <div className="analytics-chart-container">
-          <h3 style={{ marginBottom: 16 }}>Users Deleted (Last 30 Days)</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            {chartType === 'line' ? (
-              <LineChart data={dailyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date" 
-                  tickFormatter={(date) => {
-                    const d = new Date(date);
-                    return `${d.getMonth() + 1}/${d.getDate()}`;
-                  }}
-                />
-                <YAxis />
-                <Tooltip 
-                  labelFormatter={(date) => {
-                    const d = new Date(date);
-                    return d.toLocaleDateString();
-                  }}
-                />
-                <Legend />
-                <Line type="monotone" dataKey="deletedUsers" stroke="#dc2626" strokeWidth={2} name="Deleted Users" />
-              </LineChart>
-            ) : (
-              <BarChart data={dailyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date" 
-                  tickFormatter={(date) => {
-                    const d = new Date(date);
-                    return `${d.getMonth() + 1}/${d.getDate()}`;
-                  }}
-                />
-                <YAxis />
-                <Tooltip 
-                  labelFormatter={(date) => {
-                    const d = new Date(date);
-                    return d.toLocaleDateString();
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="deletedUsers" fill="#dc2626" name="Deleted Users" />
-              </BarChart>
-            )}
-          </ResponsiveContainer>
-        </div>
-
         {/* Combined Chart */}
         <div className="analytics-chart-container" style={{ gridColumn: '1 / -1' }}>
           <h3 style={{ marginBottom: 16 }}>All Metrics Combined (Last 30 Days)</h3>
@@ -488,7 +509,6 @@ export default function Analytics() {
                 <Line type="monotone" dataKey="hikers" stroke="#06b6d4" strokeWidth={2} name="Hikers" />
                 <Line type="monotone" dataKey="hikes" stroke="#16a34a" strokeWidth={2} name="Hikes" />
                 <Line type="monotone" dataKey="bookings" stroke="#ea580c" strokeWidth={2} name="Bookings" />
-                <Line type="monotone" dataKey="deletedUsers" stroke="#dc2626" strokeWidth={2} name="Deleted Users" />
               </LineChart>
             ) : (
               <BarChart data={dailyData}>
@@ -513,7 +533,6 @@ export default function Analytics() {
                 <Bar dataKey="hikers" fill="#06b6d4" name="Hikers" />
                 <Bar dataKey="hikes" fill="#16a34a" name="Hikes" />
                 <Bar dataKey="bookings" fill="#ea580c" name="Bookings" />
-                <Bar dataKey="deletedUsers" fill="#dc2626" name="Deleted Users" />
               </BarChart>
             )}
           </ResponsiveContainer>

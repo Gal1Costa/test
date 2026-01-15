@@ -101,16 +101,14 @@ export default function AdminDashboard() {
         <>
           <div className="admin-cards">
             <DashboardCard title="Total Users" value={overview?.users ?? '—'} to="/admin/users" />
-            <DashboardCard title="Total Guides" value={overview?.guides ?? overview?.hikes ?? '—'} to="/admin/users" />
+            <DashboardCard title="Total Guides" value={overview?.guides ?? overview?.hikes ?? '—'} to="/admin/guides" />
             <DashboardCard title="Total Bookings" value={overview?.bookings ?? '—'} to="/admin/hikes" />
-            <DashboardCard title="Average Rating" value={overview?.averageRating ? Number(overview.averageRating).toFixed(2) : '—'} />
           </div>
 
 
           {/* tabs are provided by AdminLayout/AdminTabs - do not duplicate here */}
 
           <div className="admin-section">
-            {tab === 'Overview' && <div className="placeholder">Overview placeholder — coming soon.</div>}
             {tab === 'Analytics' && <div className="placeholder">Analytics placeholder — coming soon.</div>}
             {tab === 'Hikes' && <Hikes />}
             {tab === 'Users' && <Users />}
