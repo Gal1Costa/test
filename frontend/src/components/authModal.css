@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 11000;
 }
 .auth-modal {
   background: #fff;
@@ -41,6 +41,43 @@
 .auth-input { padding:12px; border-radius:10px; border:1px solid #f0f0f0; background:#fbfbfb; }
 .auth-input-error { border-color:#e53e3e; background:#fff5f5; }
 .auth-error { font-size:12px; color:#e53e3e; margin-top:-4px; margin-bottom:4px; }
+
+/* Password container with toggle */
+.auth-password-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-password-container .auth-input {
+  padding-right: 40px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.auth-password-toggle:hover {
+  color: #374151;
+}
+
+.auth-password-toggle:focus {
+  outline: none;
+  color: #2f855a;
+}
+
 .auth-submit { margin-top:10px; background:#2f855a; color:#fff; border:none; padding:12px; border-radius:8px; cursor:pointer; font-weight:600; }
 .auth-submit:disabled { opacity:0.6; cursor:not-allowed; }
 

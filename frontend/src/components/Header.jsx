@@ -27,6 +27,18 @@ export default function Header({ onOpenAuthModal }) {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
+      const holdForSignup = localStorage.getItem('holdHeaderForSignup') === '1';
+
+      if (holdForSignup) {
+        // Keep header in visitor state while signup flow signs out immediately
+        if (!u) {
+          localStorage.removeItem('holdHeaderForSignup');
+        }
+        setUser(null);
+        setUserRole(null);
+        return;
+      }
+
       setUser(u);
 
       if (u) {
@@ -42,7 +54,8 @@ export default function Header({ onOpenAuthModal }) {
 
   // On hard reload where auth.currentUser is already set
   useEffect(() => {
-    if (auth.currentUser) fetchUserRole();
+    const holdForSignup = localStorage.getItem('holdHeaderForSignup') === '1';
+    if (!holdForSignup && auth.currentUser) fetchUserRole();
   }, [fetchUserRole]);
 
   async function handleSignOut() {
