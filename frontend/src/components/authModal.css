@@ -88,3 +88,10 @@
 .role-card .role-title { font-weight:700; margin-bottom:6px; }
 .role-card .role-sub { font-size:13px; color:#707070; }
 .role-card.selected { border-color:#2f855a; box-shadow: 0 6px 18px rgba(47,133,90,0.08); }
+
+/* Responsive: Prevent auto-zoom on mobile when focusing input fields */
+@media (max-width: 768px) {
+  .auth-input {
+    font-size: 16px;
+  }
+}
