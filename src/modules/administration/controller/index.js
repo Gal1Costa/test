@@ -23,6 +23,97 @@ router.get('/overview', requireRole(['admin']), async (req, res, next) => {
   }
 });
 
+// GET /api/admin/analytics  -> returns time-series analytics data
+router.get('/analytics', requireRole(['admin']), async (req, res, next) => {
+  try {
+    const now = new Date();
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+    // This month counts
+    const [usersThisMonth, hikesThisMonth, bookingsThisMonth, guidesThisMonth, hikersThisMonth] = await Promise.all([
+      prisma.user.count({ where: { createdAt: { gte: startOfThisMonth } } }),
+      prisma.hike.count({ where: { createdAt: { gte: startOfThisMonth } } }),
+      prisma.booking.count({ where: { createdAt: { gte: startOfThisMonth } } }),
+      prisma.guide.count({ where: { createdAt: { gte: startOfThisMonth } } }),
+      prisma.user.count({ where: { role: 'hiker', createdAt: { gte: startOfThisMonth } } }),
+    ]);
+
+    // Last month counts
+    const [usersLastMonth, hikesLastMonth, bookingsLastMonth, guidesLastMonth, hikersLastMonth] = await Promise.all([
+      prisma.user.count({ where: { createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } } }),
+      prisma.hike.count({ where: { createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } } }),
+      prisma.booking.count({ where: { createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } } }),
+      prisma.guide.count({ where: { createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } } }),
+      prisma.user.count({ where: { role: 'hiker', createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } } }),
+    ]);
+
+    // Total deleted users (all time)
+    const [deletedUsersThisMonth, deletedUsersLastMonth] = await Promise.all([
+      prisma.user.count({ where: { status: 'DELETED' } }),
+      prisma.user.count({ where: { status: 'DELETED' } }),
+    ]);
+
+    // Daily data for the last 30 days
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    const dailyData = [];
+    for (let i = 0; i < 30; i++) {
+      const dayStart = new Date(thirtyDaysAgo.getTime() + i * 24 * 60 * 60 * 1000);
+      const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
+      
+      const [users, hikes, bookings, guides, hikers] = await Promise.all([
+        prisma.user.count({ where: { createdAt: { gte: dayStart, lte: dayEnd } } }),
+        prisma.hike.count({ where: { createdAt: { gte: dayStart, lte: dayEnd } } }),
+        prisma.booking.count({ where: { createdAt: { gte: dayStart, lte: dayEnd } } }),
+        prisma.guide.count({ where: { createdAt: { gte: dayStart, lte: dayEnd } } }),
+        prisma.user.count({ where: { role: 'hiker', createdAt: { gte: dayStart, lte: dayEnd } } }),
+      ]);
+
+      // Get cumulative deleted users up to this day
+      const deletedUsers = await prisma.user.count({ 
+        where: { 
+          status: 'DELETED',
+          createdAt: { lte: dayEnd } // Count all deleted users created up to this day
+        } 
+      });
+
+      dailyData.push({
+        date: dayStart.toISOString().split('T')[0],
+        users,
+        hikes,
+        bookings,
+        guides,
+        hikers,
+        deletedUsers,
+      });
+    }
+
+    res.json({
+      thisMonth: { 
+        users: usersThisMonth, 
+        hikes: hikesThisMonth, 
+        bookings: bookingsThisMonth,
+        guides: guidesThisMonth,
+        hikers: hikersThisMonth,
+        deletedUsers: deletedUsersThisMonth
+      },
+      lastMonth: { 
+        users: usersLastMonth, 
+        hikes: hikesLastMonth, 
+        bookings: bookingsLastMonth,
+        guides: guidesLastMonth,
+        hikers: hikersLastMonth,
+        deletedUsers: deletedUsersLastMonth
+      },
+      dailyData,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/admin/users  -> list users for admin UI with guide/hiker profiles
 router.get('/users', requireRole(['admin']), async (req, res, next) => {
   try {

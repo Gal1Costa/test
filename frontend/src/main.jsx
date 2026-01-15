@@ -18,8 +18,7 @@ import HikeEdit from "./pages/admin/HikeEdit";
 import UsersAdmin from "./pages/admin/Users";
 import GuidesAdmin from "./pages/admin/Guides";
 import DeletedAccounts from "./pages/admin/DeletedAccounts";
-import AnalyticsPlaceholder from "./pages/admin/AnalyticsPlaceholder";
-import ModerationPlaceholder from "./pages/admin/ModerationPlaceholder";
+import Analytics from "./pages/admin/Analytics";
 import AdminDevLogin from "./pages/admin/AdminDevLogin";
 import AdminAudit from "./pages/admin/AdminAudit";
 import ErrorBoundary from "./ErrorBoundary";
@@ -120,14 +119,13 @@ function App() {
             <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="analytics" element={<AnalyticsPlaceholder />} />
+              <Route path="analytics" element={<Analytics />} />
               <Route path="audit" element={<AdminAudit />} />
               <Route path="hikes" element={<HikesAdmin />} />
               <Route path="hikes/:id" element={<HikeEdit />} />
               <Route path="users" element={<UsersAdmin />} />
               <Route path="guides" element={<GuidesAdmin />} />
               <Route path="deleted" element={<DeletedAccounts />} />
-              <Route path="moderation" element={<ModerationPlaceholder />} />
             </Route>
             {/* redirect root to /explore */}
             <Route path="/" element={<Navigate to="/explore" replace />} />

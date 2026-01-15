@@ -9,7 +9,6 @@ const tabs = [
   { key: 'guides', label: 'Guides', to: '/admin/guides' },
   { key: 'deleted', label: 'Deleted', to: '/admin/deleted' },
   { key: 'analytics', label: 'Analytics', to: '/admin/analytics' },
-  { key: 'moderation', label: 'Moderation', to: '/admin/moderation' },
 ];
 
 export default function AdminTabs({ currentPath = '' }) {
