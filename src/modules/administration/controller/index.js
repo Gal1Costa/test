@@ -303,16 +303,11 @@ router.delete('/users/:id', requireRole(['admin']), async (req, res, next) => {
   try {
     const { id } = req.params;
     
-    // Soft delete: set status to DELETED and anonymize email/name
-    const anonymizedEmail = `deleted+${id}@example.invalid`;
-    const anonymizedName = 'Deleted User';
-    
+    // Soft delete: set status to DELETED (keep email and name for admin visibility)
     await prisma.user.update({
       where: { id },
       data: {
-        status: 'DELETED',
-        email: anonymizedEmail,
-        name: anonymizedName
+        status: 'DELETED'
       }
     });
     
@@ -336,11 +331,41 @@ router.delete('/users/:id', requireRole(['admin']), async (req, res, next) => {
 router.delete('/guides/:id', requireRole(['admin']), async (req, res, next) => {
   try {
     const { id } = req.params;
-    // delete reviews referencing this guide
-    await prisma.review.deleteMany({ where: { guideId: id } }).catch(() => {});
-    // delete the guide, hikes should be cascade-deleted if DB is configured
-    await prisma.guide.delete({ where: { id } });
-    try { await recordAudit({ actorId: req.user?.id || null, actorEmail: req.user?.email || null, action: 'delete_guide', resource: 'guide', resourceId: id }); } catch (e) {}
+    
+    // Get the guide to find the associated user
+    const guide = await prisma.guide.findUnique({ 
+      where: { id },
+      include: { user: true }
+    });
+    
+    if (!guide) {
+      return res.status(404).json({ error: 'Guide not found' });
+    }
+    
+    // Soft delete: mark the guide's user as DELETED (keep email and name for admin visibility)
+    if (guide.userId) {
+      await prisma.user.update({
+        where: { id: guide.userId },
+        data: { status: 'DELETED' }
+      });
+    }
+    
+    // Also mark the guide profile as deleted
+    await prisma.guide.update({
+      where: { id },
+      data: { status: 'DELETED' }
+    });
+    
+    try { 
+      await recordAudit({ 
+        actorId: req.user?.id || null, 
+        actorEmail: req.user?.email || null, 
+        action: 'soft_delete_guide', 
+        resource: 'guide', 
+        resourceId: id 
+      }); 
+    } catch (e) {}
+    
     return res.status(204).end();
   } catch (err) {
     next(err);

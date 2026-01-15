@@ -7,6 +7,7 @@ const tabs = [
   { key: 'hikes', label: 'Hikes', to: '/admin/hikes' },
   { key: 'users', label: 'Users', to: '/admin/users' },
   { key: 'guides', label: 'Guides', to: '/admin/guides' },
+  { key: 'deleted', label: 'Deleted', to: '/admin/deleted' },
   { key: 'analytics', label: 'Analytics', to: '/admin/analytics' },
   { key: 'moderation', label: 'Moderation', to: '/admin/moderation' },
 ];

@@ -601,10 +601,12 @@ router.put('/:id', upload.fields([{ name: 'cover' }]), async (req, res, next) =>
       req.user ? { email: req.user.email, name: req.user.name, role: req.user.role } : null
     );
 
-    if (!profile?.guide) return send403(res, 'Only guides can edit hikes');
+    // Allow admins to edit any hike, or guides to edit their own hikes
+    const isAdmin = req.user?.role === 'admin';
+    if (!isAdmin && !profile?.guide) return send403(res, 'Only guides and admins can edit hikes');
 
     const hike = await repo.getHikeById(req.params.id);
-    if (!hike || hike.guideId !== profile.guide.id) return send403(res, 'You can only edit your own hikes');
+    if (!isAdmin && hike && hike.guideId !== profile.guide.id) return send403(res, 'You can only edit your own hikes');
 
     let updated = await repo.updateHike(req.params.id, data);
     
@@ -737,11 +739,13 @@ router.delete('/:id', async (req, res, next) => {
       req.user ? { email: req.user.email, name: req.user.name, role: req.user.role } : null
     );
 
-    if (!profile?.guide) return send403(res, 'Only guides can delete hikes');
+    // Allow admins to delete any hike, or guides to delete their own hikes
+    const isAdmin = req.user?.role === 'admin';
+    if (!isAdmin && !profile?.guide) return send403(res, 'Only guides and admins can delete hikes');
 
     const hike = await repo.getHikeById(req.params.id);
     if (!hike) return send404(res, 'Hike not found');
-    if (hike.guideId !== profile.guide.id) return send403(res, 'You can only delete your own hikes');
+    if (!isAdmin && hike.guideId !== profile.guide.id) return send403(res, 'You can only delete your own hikes');
 
     await repo.deleteHike(req.params.id);
     res.status(204).end();

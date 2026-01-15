@@ -14,8 +14,10 @@ import AdminAccess from "./pages/admin/AdminAccess";
 import AdminLayout from "./pages/admin/layouts/AdminLayout";
 import AdminRoute from "./pages/admin/AdminRoute";
 import HikesAdmin from "./pages/admin/Hikes";
+import HikeEdit from "./pages/admin/HikeEdit";
 import UsersAdmin from "./pages/admin/Users";
 import GuidesAdmin from "./pages/admin/Guides";
+import DeletedAccounts from "./pages/admin/DeletedAccounts";
 import AnalyticsPlaceholder from "./pages/admin/AnalyticsPlaceholder";
 import ModerationPlaceholder from "./pages/admin/ModerationPlaceholder";
 import AdminDevLogin from "./pages/admin/AdminDevLogin";
@@ -67,12 +69,10 @@ function App() {
     return () => window.removeEventListener('openAuthModal', handleOpenAuth);
   }, []);
 
-  // Listen for admin sign-in event: close modal and show toast
+  // Listen for admin sign-in event: close modal (no toast needed)
   useEffect(() => {
     const onAdminSignedIn = (e) => {
       setModalOpen(false);
-      setToast({ message: 'Admin access granted', type: 'success' });
-      setTimeout(() => setToast(null), 3500);
     };
     window.addEventListener('admin:signedin', onAdminSignedIn);
     return () => window.removeEventListener('admin:signedin', onAdminSignedIn);
@@ -123,8 +123,10 @@ function App() {
               <Route path="analytics" element={<AnalyticsPlaceholder />} />
               <Route path="audit" element={<AdminAudit />} />
               <Route path="hikes" element={<HikesAdmin />} />
+              <Route path="hikes/:id" element={<HikeEdit />} />
               <Route path="users" element={<UsersAdmin />} />
               <Route path="guides" element={<GuidesAdmin />} />
+              <Route path="deleted" element={<DeletedAccounts />} />
               <Route path="moderation" element={<ModerationPlaceholder />} />
             </Route>
             {/* redirect root to /explore */}

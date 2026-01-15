@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import './admin.css';
 import { listHikes, deleteHike } from './services/adminApi';
 import DataTable from './components/DataTable';
@@ -84,9 +85,10 @@ export default function Hikes() {
     { key: 'participantsCount', title: 'Participants' },
     { key: 'distance', title: 'Distance' },
     { key: 'actions', title: 'Actions', render: (r) => (
-      <div className="admin-actions">
-        <button className="btn btn-outline-danger" onClick={() => handleDelete(r)}>Delete</button>
+      <div className="admin-actions" style={{ display: 'flex', gap: 6 }}>
+        <Link to={`/admin/hikes/${r.id}`} className="btn" style={{ textDecoration: 'none' }}>Edit</Link>
         <a className="btn" style={{ textDecoration: 'none' }} href={`/hikes/${r.id}`} target="_blank" rel="noreferrer">View</a>
+        <button className="btn btn-outline-danger" onClick={() => handleDelete(r)}>Delete</button>
       </div>
     )},
   ];
