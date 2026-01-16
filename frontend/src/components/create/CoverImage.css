@@ -83,6 +83,7 @@
 .preview-image-container {
   position: relative;
   width: 100%;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: 0.75rem;
   background: #f3f4f6;

@@ -94,4 +94,10 @@
   .auth-input {
     font-size: 16px;
   }
+  .auth-tab{
+    color: #3a3a3a;
+  }
+  .role-card{
+    color:#3a3a3a;
+  }
 }
