@@ -500,6 +500,139 @@ router.delete('/guides/:id', requireRole(['admin']), async (req, res, next) => {
   }
 });
 
+// GET /api/admin/role-requests -> get all pending role requests
+router.get('/role-requests', requireRole(['admin']), async (req, res, next) => {
+  try {
+    const requests = await prisma.auditLog.findMany({
+      where: {
+        action: 'ROLE_REQUEST_GUIDE',
+        details: 'PENDING'
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Get user details for each request
+    const requestsWithUsers = await Promise.all(
+      requests.map(async (request) => {
+        const user = await prisma.user.findUnique({
+          where: { id: request.actorId },
+          include: { hikerProfile: true }
+        });
+        return {
+          ...request,
+          user
+        };
+      })
+    );
+
+    return res.json(requestsWithUsers);
+  } catch (err) {
+    console.error('[admin] Error fetching role requests:', err);
+    next(err);
+  }
+});
+
+// POST /api/admin/role-requests/:requestId/approve -> approve a role request
+router.post('/role-requests/:requestId/approve', requireRole(['admin']), async (req, res, next) => {
+  try {
+    const { requestId } = req.params;
+
+    const request = await prisma.auditLog.findUnique({
+      where: { id: requestId }
+    });
+
+    if (!request || request.action !== 'ROLE_REQUEST_GUIDE') {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    if (request.details !== 'PENDING') {
+      return res.status(400).json({ error: 'Request already processed' });
+    }
+
+    // Update user role to guide
+    await prisma.user.update({
+      where: { id: request.actorId },
+      data: { role: 'guide' }
+    });
+
+    // Create guide profile
+    await prisma.guide.create({
+      data: {
+        userId: request.actorId,
+        bio: '',
+        status: 'ACTIVE'
+      }
+    });
+
+    // Update the request status
+    await prisma.auditLog.update({
+      where: { id: requestId },
+      data: { 
+        details: `APPROVED_BY:${req.user?.id || 'admin'}` 
+      }
+    });
+
+    // Record audit
+    try {
+      await recordAudit({
+        actorId: req.user?.id || null,
+        actorEmail: req.user?.email || null,
+        action: 'approve_guide_request',
+        resource: 'user',
+        resourceId: request.actorId
+      });
+    } catch (e) {}
+
+    return res.json({ message: 'Request approved successfully' });
+  } catch (err) {
+    console.error('[admin] Error approving role request:', err);
+    next(err);
+  }
+});
+
+// POST /api/admin/role-requests/:requestId/reject -> reject a role request
+router.post('/role-requests/:requestId/reject', requireRole(['admin']), async (req, res, next) => {
+  try {
+    const { requestId } = req.params;
+
+    const request = await prisma.auditLog.findUnique({
+      where: { id: requestId }
+    });
+
+    if (!request || request.action !== 'ROLE_REQUEST_GUIDE') {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    if (request.details !== 'PENDING') {
+      return res.status(400).json({ error: 'Request already processed' });
+    }
+
+    // Update the request status
+    await prisma.auditLog.update({
+      where: { id: requestId },
+      data: { 
+        details: `REJECTED_BY:${req.user?.id || 'admin'}` 
+      }
+    });
+
+    // Record audit
+    try {
+      await recordAudit({
+        actorId: req.user?.id || null,
+        actorEmail: req.user?.email || null,
+        action: 'reject_guide_request',
+        resource: 'user',
+        resourceId: request.actorId
+      });
+    } catch (e) {}
+
+    return res.json({ message: 'Request rejected successfully' });
+  } catch (err) {
+    console.error('[admin] Error rejecting role request:', err);
+    next(err);
+  }
+});
+
 module.exports = router;
 
 

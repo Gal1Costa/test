@@ -11,6 +11,73 @@
   align-items: center;
 }
 
+.role-select {
+  padding: 8px 32px 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23374151' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  min-width: 100px;
+}
+
+.role-select:hover:not(:disabled) {
+  border-color: #2f855a;
+  box-shadow: 0 0 0 3px rgba(47, 133, 90, 0.1);
+}
+
+.role-select:focus {
+  outline: none;
+  border-color: #2f855a;
+  box-shadow: 0 0 0 3px rgba(47, 133, 90, 0.15);
+}
+
+.role-select:disabled,
+.role-select.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f3f4f6;
+}
+
+.role-select option {
+  padding: 8px;
+  font-weight: 500;
+}
+
+.admin-search-bar {
+  padding: 10px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  min-width: 320px;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.admin-search-bar::placeholder {
+  color: #9ca3af;
+}
+
+.admin-search-bar:hover {
+  border-color: #2f855a;
+  box-shadow: 0 0 0 3px rgba(47, 133, 90, 0.1);
+}
+
+.admin-search-bar:focus {
+  outline: none;
+  border-color: #2f855a;
+  box-shadow: 0 0 0 3px rgba(47, 133, 90, 0.15);
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -71,10 +138,11 @@
 
 .confirm-overlay {
   position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.28); z-index:1200;
+  padding: 16px;
 }
 
 .confirm-box {
-  background: #fff; padding: 18px; border-radius: 10px; width: 440px; box-shadow: 0 12px 30px rgba(12,20,12,0.12);
+  background: #fff; padding: 18px; border-radius: 10px; width: 440px; max-width: 100%; box-shadow: 0 12px 30px rgba(12,20,12,0.12);
 }
 
 .confirm-title { font-weight: 700; color: #0f172a; }
@@ -183,5 +251,214 @@
 @media (max-width: 1024px) {
   .analytics-charts {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ========================================
+   RESPONSIVE DESIGN - ADMIN DASHBOARD
+   ======================================== */
+
+/* Tablet and below (768px) */
+@media (max-width: 768px) {
+  /* Admin dashboard main container */
+  .admin-dashboard {
+    padding: 12px;
+  }
+
+  /* Dashboard cards - stack on mobile */
+  .admin-cards {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px;
+  }
+
+  /* Admin pages padding */
+  .admin-hikes, 
+  .admin-users,
+  .admin-guides,
+  .admin-deleted-accounts,
+  .admin-role-requests {
+    padding: 12px;
+  }
+
+  /* Page titles */
+  .admin-hikes h2,
+  .admin-users h2,
+  .admin-guides h2,
+  .admin-deleted-accounts h2,
+  .admin-role-requests h2 {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+
+  /* Search bar - full width on mobile */
+  .admin-search-bar {
+    width: 100%;
+    min-width: unset;
+    max-width: 100%;
+  }
+
+  /* Search and filter container - stack vertically */
+  .admin-hikes > div:first-of-type,
+  .admin-users > div:first-of-type,
+  .admin-guides > div:first-of-type,
+  .admin-deleted-accounts > div:first-of-type {
+    flex-direction: column !important;
+    gap: 12px;
+    align-items: stretch !important;
+  }
+
+  /* Results count */
+  .admin-hikes > div:first-of-type > div:last-child,
+  .admin-users > div:first-of-type > div:last-child,
+  .admin-guides > div:first-of-type > div:last-child,
+  .admin-deleted-accounts > div:first-of-type > div:last-child {
+    text-align: left;
+    font-size: 14px;
+  }
+
+  /* Table container - horizontal scroll */
+  .data-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -12px;
+    padding: 0 12px;
+  }
+
+  /* Table styling for mobile */
+  .admin-table,
+  table {
+    min-width: 800px; /* Force horizontal scroll instead of cramming */
+    font-size: 14px;
+  }
+
+  .admin-table th,
+  .admin-table td,
+  table th,
+  table td {
+    padding: 8px;
+    white-space: nowrap;
+  }
+
+  /* Action buttons - smaller on mobile */
+  .admin-actions {
+    gap: 6px;
+  }
+
+  .admin-actions .btn {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  /* Role select dropdown */
+  .role-select {
+    min-width: 80px;
+    font-size: 13px;
+    padding: 6px 28px 6px 10px;
+  }
+
+  /* Pagination */
+  .pagination {
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .pagination button {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  /* Admin tabs - horizontal scroll */
+  .admin-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    padding-bottom: 8px;
+  }
+
+  .admin-tabs button {
+    white-space: nowrap;
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+
+  /* Analytics cards - single column */
+  .analytics-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .analytics-value {
+    font-size: 28px;
+  }
+
+  /* Role Requests cards */
+  .role-requests-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Mobile only (480px and below) */
+@media (max-width: 480px) {
+  /* Dashboard cards - single column on small mobile */
+  .admin-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Page titles smaller */
+  .admin-hikes h2,
+  .admin-users h2,
+  .admin-guides h2,
+  .admin-deleted-accounts h2,
+  .admin-role-requests h2 {
+    font-size: 18px;
+  }
+
+  /* Card values */
+  .card-value {
+    font-size: 18px;
+  }
+
+  /* Buttons stack on very small screens */
+  .admin-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-actions .btn,
+  .admin-actions .role-select {
+    width: 100%;
+  }
+
+  /* Tab filter buttons */
+  .tab-filters {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .tab-filters button {
+    width: 100%;
+  }
+
+  /* Pagination - smaller buttons */
+  .pagination button {
+    padding: 4px 8px;
+    font-size: 12px;
+    min-width: 32px;
+  }
+
+  /* Analytics value */
+  .analytics-value {
+    font-size: 24px;
+  }
+}
+
+/* Desktop optimization (1200px and above) */
+@media (min-width: 1200px) {
+  .admin-dashboard {
+    max-width: 1400px;
+  }
+
+  .admin-cards {
+    grid-template-columns: repeat(4, 1fr);
   }
 }

@@ -2,8 +2,8 @@ import React from 'react';
 
 export default function DataTable({ columns = [], data = [], renderRow }) {
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <div className="data-table-container" style={{ overflowX: 'auto' }}>
+      <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
             {columns.map((c) => (

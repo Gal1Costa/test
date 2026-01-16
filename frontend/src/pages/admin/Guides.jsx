@@ -150,6 +150,7 @@ export default function Guides() {
       
       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12 }}>
         <input 
+          className="admin-search-bar"
           placeholder="Search guides" 
           value={query} 
           onChange={async (e) => { 
@@ -160,7 +161,6 @@ export default function Guides() {
             setGuides(Array.isArray(res.items) ? res.items : []); 
             setTotal(res.total || 0); 
           }} 
-          style={{ padding:8, width:320 }} 
         />
         <div>Showing {total} results</div>
       </div>

@@ -121,34 +121,14 @@ export default function Users() {
     { key: 'name', title: 'Name', render: (r) => (r.name || '—') },
     { key: 'email', title: 'Email' },
     { key: 'role', title: 'Role', render: (r) => {
-      const badges = [];
       const role = r.role || 'user';
       
-      // Show primary role badge without verification marks
-      badges.push(
-        <span key="role" style={{ padding: '2px 6px', borderRadius: 3, background: '#ddd', fontSize: '0.85em' }}>
-          {role}
+      // Only show the current role badge
+      return (
+        <span style={{ padding: '2px 6px', borderRadius: 3, background: '#ddd', fontSize: '0.85em' }}>
+          {role.charAt(0).toUpperCase() + role.slice(1)}
         </span>
       );
-      
-      // Only show additional profile badges if they don't match the primary role
-      if (r.guide && role !== 'guide') {
-        badges.push(
-          <span key="guide" style={{ padding: '2px 6px', borderRadius: 3, background: '#ddd', fontSize: '0.85em', marginLeft: 4 }}>
-            Guide
-          </span>
-        );
-      }
-      
-      if (r.hikerProfile && role !== 'hiker') {
-        badges.push(
-          <span key="hiker" style={{ padding: '2px 6px', borderRadius: 3, background: '#ddd', fontSize: '0.85em', marginLeft: 4 }}>
-            Hiker
-          </span>
-        );
-      }
-      
-      return <div>{badges}</div>;
     }},
     { key: 'status', title: 'Status', render: (r) => {
       const statusColor = r.status === 'DELETED' ? '#f44336' : r.status === 'ACTIVE' ? '#4caf50' : '#ff9800';
@@ -183,7 +163,7 @@ export default function Users() {
             value={r.role || 'user'} 
             onChange={(e) => handleChangeRole(r, e.target.value)} 
             disabled={shouldDisableDropdown}
-            style={isUserAdmin ? { cursor: 'not-allowed' } : {}}
+            className={`role-select ${shouldDisableDropdown ? 'disabled' : ''}`}
           >
             {availableRoles.map(role => (
               <option key={role} value={role}>
@@ -202,7 +182,7 @@ export default function Users() {
   return (
     <div className="admin-users">
       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12 }}>
-        <input placeholder="Search users" value={query} onChange={async (e) => { const q = e.target.value; setQuery(q); setPage(1); const res = await listUsers({ page: 1, pageSize, q }); setUsers(Array.isArray(res.items) ? res.items : []); setTotal(res.total || 0); }} style={{ padding:8, width:320 }} />
+        <input className="admin-search-bar" placeholder="Search users" value={query} onChange={async (e) => { const q = e.target.value; setQuery(q); setPage(1); const res = await listUsers({ page: 1, pageSize, q }); setUsers(Array.isArray(res.items) ? res.items : []); setTotal(res.total || 0); }} />
         <div>Showing {total} results</div>
       </div>
 

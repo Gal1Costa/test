@@ -59,3 +59,18 @@ export async function deleteBooking(bookingId) {
   const res = await api.delete(`/admin/bookings/${bookingId}`);
   return res.status === 204 ? { ok: true } : res.data;
 }
+
+export async function getRoleRequests() {
+  const res = await api.get('/admin/role-requests');
+  return res.data;
+}
+
+export async function approveRoleRequest(requestId) {
+  const res = await api.post(`/admin/role-requests/${requestId}/approve`);
+  return res.data;
+}
+
+export async function rejectRoleRequest(requestId) {
+  const res = await api.post(`/admin/role-requests/${requestId}/reject`);
+  return res.data;
+}

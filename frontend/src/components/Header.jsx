@@ -7,6 +7,7 @@ import './Header.css';
 export default function Header({ onOpenAuthModal }) {
   const [user, setUser] = useState(auth.currentUser);
   const [userRole, setUserRole] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   const fetchUserRole = useCallback(async () => {
@@ -82,28 +83,11 @@ export default function Header({ onOpenAuthModal }) {
   return (
     <header className="header">
       <div className="header-left">
-        <Link to={isAdmin ? "/admin" : "/explore"} className="logo">TrailHub</Link>
+        <Link to={isAdmin ? "/admin" : "/explore"} className="logo">
+          <img src="/exploreicon.png" alt="TrailHub" className="logo-image" />
+          <span className="logo-text">TrailHub</span>
+        </Link>
       </div>
-
-      {!isAdmin && (
-        <nav className="nav-links">
-          <Link to="/explore">Home</Link>
-
-          {isGuide && (
-            <>
-              <Link to="/hikes/create">Create Hike</Link>
-              <Link to="/mytrails">My Trails</Link>
-            </>
-          )}
-
-          {isHiker && (
-            <>
-              <Link to="/mytrails">My Trails</Link>
-            </>
-          )}
-
-        </nav>
-      )}
 
       <div className="header-right">
         {isVisitor && (
@@ -119,21 +103,39 @@ export default function Header({ onOpenAuthModal }) {
 
         {!isVisitor && (
           <>
-            {!isAdmin && (
-              <Link to={isGuide ? "/profile/guide" : "/profile/hiker"} className="profile-icon-link">
-                {user?.photoURL ? (
-                  <img src={user.photoURL} alt="profile" className="profile-avatar" />
-                ) : (
-                  <div className="profile-avatar-placeholder">
-                    {(user?.displayName?.[0] || user?.email?.[0] || 'U')}
+            {(isGuide || isHiker) && (
+              <div className="menu-container">
+                <button onClick={() => setMenuOpen(!menuOpen)} className="hamburger-btn">
+                  <div className="hamburger-line"></div>
+                  <div className="hamburger-line"></div>
+                  <div className="hamburger-line"></div>
+                </button>
+                {menuOpen && (
+                  <div className="dropdown-menu">
+                    {isGuide && (
+                      <Link to="/hikes/create" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                        Create Hike
+                      </Link>
+                    )}
+                    <Link to="/mytrails" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                      My Trails
+                    </Link>
+                    <Link to={isGuide ? "/profile/guide" : "/profile/hiker"} className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                      Profile
+                    </Link>
+                    <button onClick={() => { handleSignOut(); setMenuOpen(false); }} className="dropdown-item dropdown-signout">
+                      Sign Out
+                    </button>
                   </div>
                 )}
-              </Link>
+              </div>
             )}
-
-            <button onClick={handleSignOut} className="btn-signout">
-              Sign Out
-            </button>
+            
+            {isAdmin && (
+              <button onClick={handleSignOut} className="btn-signout">
+                Sign Out
+              </button>
+            )}
           </>
         )}
       </div>

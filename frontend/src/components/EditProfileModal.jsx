@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { auth, updatePassword, updateProfile, reauthenticateWithCredential, EmailAuthProvider } from '../firebase';
+import api from '../api';
 import './EditProfileModal.css';
 
 export default function EditProfileModal({ isOpen, onClose, user, onSave, onDelete, deleteInProgress, isPublicView }) {
@@ -15,6 +16,8 @@ export default function EditProfileModal({ isOpen, onClose, user, onSave, onDele
   const [error, setError] = useState('');
   const [needsReauth, setNeedsReauth] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
+  const [requestLoading, setRequestLoading] = useState(false);
 
   // Update form data when user data changes or modal opens
   useEffect(() => {
@@ -29,8 +32,49 @@ export default function EditProfileModal({ isOpen, onClose, user, onSave, onDele
       });
       setError('');
       setNeedsReauth(false);
+
+      // Check for pending role request if user is a hiker
+      if (user?.role === 'hiker') {
+        checkRoleRequestStatus();
+      }
     }
   }, [isOpen, user]);
+
+  async function checkRoleRequestStatus() {
+    try {
+      const res = await api.get('/me/role-request-status');
+      setHasPendingRequest(res?.data?.hasPendingRequest || false);
+    } catch (err) {
+      console.error('Failed to check role request status:', err);
+    }
+  }
+
+  async function handleRequestGuideRole() {
+    setRequestLoading(true);
+    try {
+      await api.post('/me/request-guide-role');
+      setHasPendingRequest(true);
+      
+      // Show success toast
+      window.dispatchEvent(new CustomEvent('app:toast', { 
+        detail: { 
+          message: '🎉 Guide role request submitted successfully! An admin will review your request soon.', 
+          type: 'success',
+          duration: 5000
+        } 
+      }));
+    } catch (err) {
+      console.error('Request guide role failed:', err);
+      window.dispatchEvent(new CustomEvent('app:toast', { 
+        detail: { 
+          message: err.response?.data?.error || 'Failed to submit request', 
+          type: 'error' 
+        } 
+      }));
+    } finally {
+      setRequestLoading(false);
+    }
+  }
 
   if (!isOpen) return null;
 
@@ -240,6 +284,31 @@ export default function EditProfileModal({ isOpen, onClose, user, onSave, onDele
           )}
 
           {error && <div className="form-error">{error}</div>}
+
+          {/* Guide Role Request Section - Only for hikers */}
+          {!isPublicView && user?.role === 'hiker' && (
+            <div className="guide-request-section">
+              <div className="section-divider"></div>
+              <h3 className="section-title">Become a Guide</h3>
+              <p className="section-description">
+                Want to lead hikes? Request to become a guide and share your expertise with the community.
+              </p>
+              {hasPendingRequest ? (
+                <div className="pending-request-badge">
+                  ⏳ Guide Request Pending
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleRequestGuideRole}
+                  className="btn-request-guide"
+                  disabled={requestLoading || saving}
+                >
+                  {requestLoading ? 'Submitting...' : '🚀 Request Guide Role'}
+                </button>
+              )}
+            </div>
+          )}
 
           <div className="form-actions">
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>

@@ -1,6 +1,7 @@
 .admin-dashboard {
   max-width: 1200px;
   margin: 0 auto;
+  padding: 16px;
 }
 .admin-cards {
   display: grid;
@@ -18,3 +19,45 @@
 .dashboard-card { padding: 18px; border-radius: 10px; background: #fff; box-shadow: 0 8px 20px rgba(12,20,12,0.04); border:1px solid #f0f2ef; }
 .card-title { color: #6b6f63; font-size: 13px; }
 .card-value { margin-top:10px; font-size:20px; font-weight:700; color:#203126 }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .admin-dashboard {
+    padding: 12px;
+  }
+
+  .admin-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .admin-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+
+  .admin-tabs button {
+    white-space: nowrap;
+    font-size: 13px;
+  }
+
+  .placeholder {
+    padding: 16px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-card {
+    padding: 14px;
+  }
+
+  .card-value {
+    font-size: 18px;
+  }
+}

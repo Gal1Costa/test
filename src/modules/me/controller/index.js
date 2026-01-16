@@ -65,4 +65,67 @@ router.delete('/', requireRole(['hiker','guide','admin']), async (req, res, next
   }
 });
 
+// POST /api/me/request-guide-role - hiker requests to become a guide
+router.post('/request-guide-role', requireRole(['hiker']), async (req, res, next) => {
+  try {
+    const authUser = req.user;
+    if (!authUser || !authUser.id) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Check if user already has a pending request
+    const existingRequest = await prisma.auditLog.findFirst({
+      where: {
+        actorId: authUser.id,
+        action: 'ROLE_REQUEST_GUIDE',
+        details: 'PENDING'
+      }
+    });
+
+    if (existingRequest) {
+      return res.status(400).json({ error: 'You already have a pending request' });
+    }
+
+    // Create role request using AuditLog
+    await prisma.auditLog.create({
+      data: {
+        actorId: authUser.id,
+        actorEmail: authUser.email,
+        action: 'ROLE_REQUEST_GUIDE',
+        resource: 'user',
+        resourceId: authUser.id,
+        details: 'PENDING' // status stored in details field
+      }
+    });
+
+    return res.json({ message: 'Guide role request submitted successfully' });
+  } catch (err) {
+    console.error('[me] Error requesting guide role:', err);
+    next(err);
+  }
+});
+
+// GET /api/me/role-request-status - check if user has pending role request
+router.get('/role-request-status', requireRole(['hiker']), async (req, res, next) => {
+  try {
+    const authUser = req.user;
+    if (!authUser || !authUser.id) return res.status(401).json({ error: 'Unauthorized' });
+
+    const pendingRequest = await prisma.auditLog.findFirst({
+      where: {
+        actorId: authUser.id,
+        action: 'ROLE_REQUEST_GUIDE',
+        details: 'PENDING'
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return res.json({ 
+      hasPendingRequest: !!pendingRequest,
+      request: pendingRequest
+    });
+  } catch (err) {
+    console.error('[me] Error checking role request status:', err);
+    next(err);
+  }
+});
+
 module.exports = router;
