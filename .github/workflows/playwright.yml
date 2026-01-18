@@ -1,0 +1,81 @@
+name: Playwright E2E Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/playwright.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'frontend/**'
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18.x]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+      
+      - name: Install dependencies (frontend)
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        working-directory: ./frontend
+        run: npx playwright install --with-deps
+      
+      - name: Start development server
+        working-directory: ./frontend
+        run: npm run dev &
+        env:
+          VITE_API_URL: http://localhost:3000
+      
+      - name: Wait for server to start
+        run: |
+          npx wait-on http://localhost:5173 --timeout 60000
+      
+      - name: Run Playwright tests
+        working-directory: ./frontend
+        run: npx playwright test
+        env:
+          CI: true
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.node-version }}
+          path: frontend/playwright-report/
+          retention-days: 30
+      
+      - name: Upload test results (JSON)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.node-version }}
+          path: frontend/test-results/
+          retention-days: 30
+      
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: |
+            frontend/test-results/results.xml
+          check_name: Playwright Test Results
+          comment_mode: always
