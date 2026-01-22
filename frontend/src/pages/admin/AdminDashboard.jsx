@@ -4,12 +4,14 @@ import { auth, reauthenticateWithCredential, EmailAuthProvider, onAuthStateChang
 import DashboardCard from './components/DashboardCard';
 import Hikes from './Hikes';
 import Users from './Users';
+import { getRoleRequests } from './services/adminApi';
 import './AdminDashboard.css';
 
 export default function AdminDashboard() {
   const [overview, setOverview] = useState(null);
   const [unauthorized, setUnauthorized] = useState(false);
   const [tab, setTab] = useState('Overview');
+  const [pendingRequests, setPendingRequests] = useState(0);
   // simplified: remove reauth confirmation flow; load dashboard when overview available
 
   useEffect(() => {
@@ -19,6 +21,14 @@ export default function AdminDashboard() {
         const res = await api.get('/admin/overview');
         if (mounted) setOverview(res.data);
         if (mounted) setUnauthorized(false);
+
+        // Load pending role requests count
+        try {
+          const requests = await getRoleRequests();
+          if (mounted) setPendingRequests(requests.length);
+        } catch (err) {
+          console.warn('Failed to load role requests count', err);
+        }
       } catch (err) {
         // If not authorized, show login prompt
         const status = err?.response?.status;
@@ -103,6 +113,14 @@ export default function AdminDashboard() {
             <DashboardCard title="Total Users" value={overview?.users ?? '—'} to="/admin/users" />
             <DashboardCard title="Total Guides" value={overview?.guides ?? overview?.hikes ?? '—'} to="/admin/guides" />
             <DashboardCard title="Total Bookings" value={overview?.bookings ?? '—'} to="/admin/hikes" />
+            {pendingRequests > 0 && (
+              <DashboardCard 
+                title="Role Requests" 
+                value={`${pendingRequests} 🚀`} 
+                to="/admin/role-requests"
+                highlight={true}
+              />
+            )}
           </div>
 
 

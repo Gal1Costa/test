@@ -176,7 +176,7 @@ export default function Hikes() {
   return (
     <div className="admin-hikes">
       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12 }}>
-        <input placeholder="Search hikes" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} style={{ padding:8, width:320 }} />
+        <input className="admin-search-bar" placeholder="Search hikes" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} />
         <div>Showing {filtered.length} results</div>
       </div>
 

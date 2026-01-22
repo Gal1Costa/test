@@ -90,7 +90,7 @@ export default function DeletedAccounts() {
       <h2>Deleted Accounts</h2>
       
       <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <div className="tab-filters" style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           <button 
             className={`btn ${activeTab === 'all' ? 'btn-primary' : ''}`}
             onClick={() => { setActiveTab('all'); setPage(1); }}
@@ -114,10 +114,10 @@ export default function DeletedAccounts() {
 
       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12 }}>
         <input 
+          className="admin-search-bar"
           placeholder="Search deleted accounts" 
           value={query} 
           onChange={(e) => handleSearch(e.target.value)}
-          style={{ padding:8, width:320 }} 
         />
         <div>Showing {total} results</div>
       </div>

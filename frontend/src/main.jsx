@@ -19,6 +19,7 @@ import HikeEdit from "./pages/admin/HikeEdit";
 import UsersAdmin from "./pages/admin/Users";
 import GuidesAdmin from "./pages/admin/Guides";
 import DeletedAccounts from "./pages/admin/DeletedAccounts";
+import RoleRequests from "./pages/admin/RoleRequests";
 import Analytics from "./pages/admin/Analytics";
 import AdminDevLogin from "./pages/admin/AdminDevLogin";
 import AdminAudit from "./pages/admin/AdminAudit";
@@ -143,6 +144,7 @@ function AppContent({ handleOpenAuthModal, modalOpen, setModalOpen, modalTab, mo
               <Route path="hikes/:id" element={<HikeEdit />} />
               <Route path="users" element={<UsersAdmin />} />
               <Route path="guides" element={<GuidesAdmin />} />
+              <Route path="role-requests" element={<RoleRequests />} />
               <Route path="deleted" element={<DeletedAccounts />} />
             </Route>
             {/* redirect root to /explore */}
