@@ -135,6 +135,11 @@ export default function Hikes() {
     { key: 'name', title: 'Title' },
     { key: 'guideName', title: 'Guide' },
     { key: 'date', title: 'Date', render: (r) => (r.date ? new Date(r.date).toLocaleDateString() : '—') },
+    { key: 'status', title: 'Status', render: (r) => {
+      const status = r.status || 'ACTIVE';
+      const statusColor = status === 'DELETED' ? '#f44336' : '#4caf50';
+      return <span style={{ padding: '2px 6px', borderRadius: 3, background: statusColor, color: '#fff', fontSize: '0.85em' }}>{status}</span>;
+    }},
     { 
       key: 'participantsCount', 
       title: 'Participants', 
@@ -165,12 +170,15 @@ export default function Hikes() {
         </button>
       )
     },
-    { key: 'actions', title: 'Actions', render: (r) => (
-      <div className="admin-actions" style={{ display: 'flex', gap: 6 }}>
-        <Link to={`/admin/hikes/${r.id}`} className="btn" style={{ textDecoration: 'none' }}>Edit</Link>
-        <button className="btn btn-outline-danger" onClick={() => handleDelete(r)}>Delete</button>
-      </div>
-    )},
+    { key: 'actions', title: 'Actions', render: (r) => {
+      const isDeleted = r.status === 'DELETED';
+      return (
+        <div className="admin-actions" style={{ display: 'flex', gap: 6 }}>
+          <Link to={`/admin/hikes/${r.id}`} className="btn" style={{ textDecoration: 'none', opacity: isDeleted ? 0.5 : 1, pointerEvents: isDeleted ? 'none' : 'auto' }}>Edit</Link>
+          <button className="btn btn-outline-danger" onClick={() => handleDelete(r)} disabled={isDeleted} style={{ opacity: isDeleted ? 0.5 : 1 }}>{isDeleted ? 'Deleted' : 'Delete'}</button>
+        </div>
+      );
+    }},
   ];
 
   return (
