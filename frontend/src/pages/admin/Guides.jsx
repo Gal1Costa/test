@@ -135,20 +135,28 @@ export default function Guides() {
     }},
     { key: 'createdAt', title: 'Joined', render: (r) => (r.createdAt ? new Date(r.createdAt).toLocaleDateString() : r.user?.createdAt ? new Date(r.user.createdAt).toLocaleDateString() : '—') },
     { key: 'stats', title: 'Stats', render: (r) => `${r._count?.hikes || 0} hikes, ${r._count?.reviews || 0} reviews` },
-    { key: 'actions', title: 'Actions', render: (r) => (
-      <div className="admin-actions" style={{ display: 'flex', gap: 6 }}>
-        <button className="btn btn-outline-danger btn-sm" onClick={() => handleDelete(r)}>
-          Delete
-        </button>
-      </div>
-    )},
+    { key: 'actions', title: 'Actions', render: (r) => {
+      const isDeleted = r.status === 'DELETED' || r.user?.status === 'DELETED';
+      return (
+        <div className="admin-actions" style={{ display: 'flex', gap: 6 }}>
+          <button 
+            className="btn btn-outline-danger btn-sm" 
+            onClick={() => handleDelete(r)}
+            disabled={isDeleted}
+            style={{ opacity: isDeleted ? 0.5 : 1, cursor: isDeleted ? 'not-allowed' : 'pointer' }}
+          >
+            {isDeleted ? 'Deleted' : 'Delete'}
+          </button>
+        </div>
+      );
+    }},
   ];
 
   return (
     <div className="admin-guides">
       <h2>Guides Management</h2>
       
-      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12 }}>
+      <div className="admin-filter-bar">
         <input 
           className="admin-search-bar"
           placeholder="Search guides" 
@@ -162,14 +170,14 @@ export default function Guides() {
             setTotal(res.total || 0); 
           }} 
         />
-        <div>Showing {total} results</div>
+        <div className="admin-results-count">Showing {total} results</div>
       </div>
 
       <DataTable columns={columns} data={guides} />
 
-      <div style={{ marginTop:12, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <div>Page {page} / {pages}</div>
-        <div style={{ display:'flex', gap:8 }}>
+      <div className="pagination">
+        <div className="pagination-info">Page {page} of {pages}</div>
+        <div className="pagination-controls">
           <button 
             onClick={async () => { 
               const p = Math.max(1, page-1); 
@@ -180,7 +188,7 @@ export default function Guides() {
             }} 
             disabled={page===1}
           >
-            Prev
+            Previous
           </button>
           <button 
             onClick={async () => { 

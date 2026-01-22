@@ -175,17 +175,19 @@ export default function Hikes() {
 
   return (
     <div className="admin-hikes">
-      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12 }}>
+      <h2>Hikes Management</h2>
+      
+      <div className="admin-filter-bar">
         <input className="admin-search-bar" placeholder="Search hikes" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} />
-        <div>Showing {filtered.length} results</div>
+        <div className="admin-results-count">Showing {filtered.length} results</div>
       </div>
 
       <DataTable columns={columns} data={pageItems} />
 
-      <div style={{ marginTop:12, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <div>Page {page} / {pages} — {total} results</div>
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={async () => { const p = Math.max(1, page-1); setPage(p); const res = await listHikes({ page: p, pageSize, q: query }); setHikes(Array.isArray(res.items) ? res.items : []); setTotal(res.total || 0); }} disabled={page===1}>Prev</button>
+      <div className="pagination">
+        <div className="pagination-info">Page {page} of {pages} — {total} total</div>
+        <div className="pagination-controls">
+          <button onClick={async () => { const p = Math.max(1, page-1); setPage(p); const res = await listHikes({ page: p, pageSize, q: query }); setHikes(Array.isArray(res.items) ? res.items : []); setTotal(res.total || 0); }} disabled={page===1}>Previous</button>
           <button onClick={async () => { const p = Math.min(pages, page+1); setPage(p); const res = await listHikes({ page: p, pageSize, q: query }); setHikes(Array.isArray(res.items) ? res.items : []); setTotal(res.total || 0); }} disabled={page===pages}>Next</button>
         </div>
       </div>

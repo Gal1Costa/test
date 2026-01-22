@@ -181,17 +181,19 @@ export default function Users() {
 
   return (
     <div className="admin-users">
-      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12 }}>
+      <h2>Users Management</h2>
+      
+      <div className="admin-filter-bar">
         <input className="admin-search-bar" placeholder="Search users" value={query} onChange={async (e) => { const q = e.target.value; setQuery(q); setPage(1); const res = await listUsers({ page: 1, pageSize, q }); setUsers(Array.isArray(res.items) ? res.items : []); setTotal(res.total || 0); }} />
-        <div>Showing {total} results</div>
+        <div className="admin-results-count">Showing {total} results</div>
       </div>
 
       <DataTable columns={columns} data={pageItems} />
 
-      <div style={{ marginTop:12, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <div>Page {page} / {pages}</div>
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={async () => { const p = Math.max(1, page-1); setPage(p); const res = await listUsers({ page: p, pageSize, q: query }); setUsers(Array.isArray(res.items) ? res.items : []); setTotal(res.total || 0); }} disabled={page===1}>Prev</button>
+      <div className="pagination">
+        <div className="pagination-info">Page {page} of {pages}</div>
+        <div className="pagination-controls">
+          <button onClick={async () => { const p = Math.max(1, page-1); setPage(p); const res = await listUsers({ page: p, pageSize, q: query }); setUsers(Array.isArray(res.items) ? res.items : []); setTotal(res.total || 0); }} disabled={page===1}>Previous</button>
           <button onClick={async () => { const p = Math.min(pages, page+1); setPage(p); const res = await listUsers({ page: p, pageSize, q: query }); setUsers(Array.isArray(res.items) ? res.items : []); setTotal(res.total || 0); }} disabled={page===pages}>Next</button>
         </div>
       </div>

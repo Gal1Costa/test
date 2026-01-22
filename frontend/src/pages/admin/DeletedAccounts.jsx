@@ -31,12 +31,15 @@ export default function DeletedAccounts() {
 
       if (activeTab === 'all' || activeTab === 'users') {
         const usersRes = await listUsers({ page, pageSize, q: query });
-        const deletedUsers = (usersRes.items || []).filter(u => u.status === 'DELETED').map(u => ({
-          ...u,
-          type: 'User',
-          displayName: u.name,
-          email: u.email,
-        }));
+        // Filter out users who are guides - they'll be shown in the guides section
+        const deletedUsers = (usersRes.items || [])
+          .filter(u => u.status === 'DELETED' && !u.guide)
+          .map(u => ({
+            ...u,
+            type: 'User',
+            displayName: u.name,
+            email: u.email,
+          }));
         allDeleted = [...allDeleted, ...deletedUsers];
       }
 
@@ -50,6 +53,13 @@ export default function DeletedAccounts() {
         }));
         allDeleted = [...allDeleted, ...deletedGuides];
       }
+
+      // Sort chronologically by deletion date (or creation date if deletedAt not available)
+      allDeleted.sort((a, b) => {
+        const dateA = new Date(a.deletedAt || a.user?.deletedAt || a.createdAt || 0);
+        const dateB = new Date(b.deletedAt || b.user?.deletedAt || b.createdAt || 0);
+        return dateB - dateA; // Most recent first
+      });
 
       setAccounts(allDeleted);
       setTotal(allDeleted.length);
@@ -89,37 +99,35 @@ export default function DeletedAccounts() {
     <div className="admin-deleted-accounts">
       <h2>Deleted Accounts</h2>
       
-      <div style={{ marginBottom: 16 }}>
-        <div className="tab-filters" style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <button 
-            className={`btn ${activeTab === 'all' ? 'btn-primary' : ''}`}
-            onClick={() => { setActiveTab('all'); setPage(1); }}
-          >
-            All
-          </button>
-          <button 
-            className={`btn ${activeTab === 'users' ? 'btn-primary' : ''}`}
-            onClick={() => { setActiveTab('users'); setPage(1); }}
-          >
-            Users
-          </button>
-          <button 
-            className={`btn ${activeTab === 'guides' ? 'btn-primary' : ''}`}
-            onClick={() => { setActiveTab('guides'); setPage(1); }}
-          >
-            Guides
-          </button>
-        </div>
+      <div className="tab-filters" style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <button 
+          className={`btn ${activeTab === 'all' ? 'btn-primary' : ''}`}
+          onClick={() => { setActiveTab('all'); setPage(1); }}
+        >
+          All
+        </button>
+        <button 
+          className={`btn ${activeTab === 'users' ? 'btn-primary' : ''}`}
+          onClick={() => { setActiveTab('users'); setPage(1); }}
+        >
+          Users
+        </button>
+        <button 
+          className={`btn ${activeTab === 'guides' ? 'btn-primary' : ''}`}
+          onClick={() => { setActiveTab('guides'); setPage(1); }}
+        >
+          Guides
+        </button>
       </div>
 
-      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12 }}>
+      <div className="admin-filter-bar">
         <input 
           className="admin-search-bar"
           placeholder="Search deleted accounts" 
           value={query} 
           onChange={(e) => handleSearch(e.target.value)}
         />
-        <div>Showing {total} results</div>
+        <div className="admin-results-count">Showing {total} results</div>
       </div>
 
       {accounts.length === 0 ? (
@@ -128,10 +136,10 @@ export default function DeletedAccounts() {
         <>
           <DataTable columns={columns} data={accounts} />
 
-          <div style={{ marginTop:12, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div>Page {page} / {pages}</div>
-            <div style={{ display:'flex', gap:8 }}>
-              <button onClick={() => { const p = Math.max(1, page-1); setPage(p); }} disabled={page===1}>Prev</button>
+          <div className="pagination">
+            <div className="pagination-info">Page {page} of {pages}</div>
+            <div className="pagination-controls">
+              <button onClick={() => setPage(Math.max(1, page-1))} disabled={page===1}>Previous</button>
               <button onClick={() => { const p = Math.min(pages, page+1); setPage(p); }} disabled={page===pages}>Next</button>
             </div>
           </div>

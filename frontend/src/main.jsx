@@ -128,24 +128,74 @@ function AppContent({ handleOpenAuthModal, modalOpen, setModalOpen, modalTab, mo
         <Header onOpenAuthModal={handleOpenAuthModal} />
       )}
 
-      <div style={{ padding: 20 }}>
+      <div style={{ padding: isAdminPage ? 0 : 20 }}>
 
         <Routes>
+            {/* ═══════════════════════════════════════════════════════════════
+                ADMIN ROUTING - STRICT SECURITY MODEL
+                ═══════════════════════════════════════════════════════════════
+                
+                PUBLIC ROUTE:
+                - /admin/access (login page) - ONLY public admin route
+                
+                ENTRY POINT:
+                - /admin → ALWAYS redirects to /admin/access (for everyone)
+                - This forces all users through the authentication gate
+                
+                PROTECTED ROUTES (require admin authentication):
+                - /admin/dashboard - Main admin dashboard
+                - /admin/users, /admin/hikes, /admin/guides, etc.
+                
+                SECURITY FLOW:
+                1. User visits /admin → redirect to /admin/access
+                2. /admin/access checks authentication:
+                   - Not logged in → show login form
+                   - Logged in but not admin → show login form with error
+                   - Logged in as admin → redirect to /admin/dashboard
+                3. User visits /admin/dashboard directly → AdminRoute guard:
+                   - Not admin → redirect to /admin/access
+                   - Admin → allow access
+                   
+                CRITICAL: /admin/dashboard is NEVER accessible without
+                explicit admin authentication verified by backend API.
+            ═══════════════════════════════════════════════════════════════ */}
+            
+            {/* Public admin route - login/access page (no authentication required) */}
             <Route path="/admin/access" element={<AdminAccess />} />
 
-              <Route path="/admin/dev-login" element={<AdminDevLogin />} />
+            {/* Dev login (only in development) */}
+            <Route path="/admin/dev-login" element={<AdminDevLogin />} />
 
-            <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-              <Route index element={<Navigate to="/admin/access" replace />} />
-              <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="audit" element={<AdminAudit />} />
-              <Route path="hikes" element={<HikesAdmin />} />
-              <Route path="hikes/:id" element={<HikeEdit />} />
-              <Route path="users" element={<UsersAdmin />} />
-              <Route path="guides" element={<GuidesAdmin />} />
-              <Route path="role-requests" element={<RoleRequests />} />
-              <Route path="deleted" element={<DeletedAccounts />} />
+            {/* /admin entry point - redirect everyone to /admin/access */}
+            <Route path="/admin" element={<Navigate to="/admin/access" replace />} />
+
+            {/* Protected admin routes - ALL require AdminRoute guard */}
+            <Route path="/admin/dashboard" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<AdminDashboard />} />
+            </Route>
+            <Route path="/admin/analytics" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<Analytics />} />
+            </Route>
+            <Route path="/admin/audit" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<AdminAudit />} />
+            </Route>
+            <Route path="/admin/hikes" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<HikesAdmin />} />
+            </Route>
+            <Route path="/admin/hikes/:id" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<HikeEdit />} />
+            </Route>
+            <Route path="/admin/users" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<UsersAdmin />} />
+            </Route>
+            <Route path="/admin/guides" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<GuidesAdmin />} />
+            </Route>
+            <Route path="/admin/role-requests" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<RoleRequests />} />
+            </Route>
+            <Route path="/admin/deleted" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+              <Route index element={<DeletedAccounts />} />
             </Route>
             {/* redirect root to /explore */}
             <Route path="/" element={<Navigate to="/explore" replace />} />

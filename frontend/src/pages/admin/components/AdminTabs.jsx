@@ -13,13 +13,22 @@ const tabs = [
 ];
 
 export default function AdminTabs({ currentPath = '' }) {
+  const isActive = (tabPath) => {
+    // Exact match for '/admin' (overview/dashboard)
+    if (tabPath === '/admin') {
+      return currentPath === '/admin' || currentPath === '/admin/dashboard';
+    }
+    // For other tabs, check if current path starts with the tab path
+    return currentPath.startsWith(tabPath);
+  };
+
   return (
     <nav className="admin-tabs" aria-label="Admin sections">
       {tabs.map(t => (
         <Link
           key={t.key}
           to={t.to}
-          className={currentPath.startsWith(t.to) ? 'active' : ''}
+          className={isActive(t.to) ? 'active' : ''}
         >
           {t.label}
         </Link>

@@ -97,7 +97,12 @@ export default function AdminDashboard() {
 
   return (
     <div className="admin-dashboard">
-      <h2>Admin Dashboard</h2>
+      <div className="dashboard-header">
+        <div>
+          <h1 className="dashboard-title">Dashboard</h1>
+          <p className="dashboard-subtitle">Welcome back! Here's an overview of your platform.</p>
+        </div>
+      </div>
 
       {unauthorized ? (
         <div className="placeholder">
