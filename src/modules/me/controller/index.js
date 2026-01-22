@@ -50,10 +50,19 @@ router.delete('/', requireRole(['hiker','guide','admin']), async (req, res, next
     // Soft delete related profiles (keep for admin visibility)
     await prisma.hikerProfile.deleteMany({ where: { userId: user.id } }).catch(() => {});
     // For guides, soft delete instead of hard delete so they remain visible in admin dashboard
+    const guides = await prisma.guide.findMany({ where: { userId: user.id } });
     await prisma.guide.updateMany({ 
       where: { userId: user.id }, 
       data: { status: 'DELETED' }
     }).catch(() => {});
+
+    // Soft-delete all hikes created by this guide (for admin dashboard visibility)
+    for (const guide of guides) {
+      await prisma.hike.updateMany({
+        where: { guideId: guide.id },
+        data: { status: 'DELETED' }
+      }).catch(() => {});
+    }
 
     // Record audit if available (best-effort)
     try {

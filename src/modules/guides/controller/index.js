@@ -20,9 +20,12 @@ router.get('/:id', requireRole(['visitor','hiker','guide','admin']), async (req,
       return res.status(404).json({ error: 'Guide not found' });
     }
 
-    // Get guide's created hikes (include all fields needed by frontend)
+    // Get guide's created hikes (exclude deleted hikes)
     const hikes = await prisma.hike.findMany({
-      where: { guideId: id },
+      where: { 
+        guideId: id,
+        status: { not: 'DELETED' } // Don't show deleted hikes on guide profile
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         _count: { select: { bookings: true } },
