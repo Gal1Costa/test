@@ -25,8 +25,14 @@ export default function ProtectedRoute({ children }) {
 
       try {
         const res = await api.get('/me').catch(() => api.get('/profile'));
-        if (mounted) {
+        // Double-check that user is still authenticated before redirecting
+        // This prevents race conditions where admin is signed out immediately after login
+        if (mounted && auth.currentUser) {
           setRole(res?.data?.role || null);
+          setChecking(false);
+        } else if (mounted) {
+          // User was signed out during the check, don't redirect
+          setRole(null);
           setChecking(false);
         }
       } catch (err) {

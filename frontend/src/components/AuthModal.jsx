@@ -225,16 +225,12 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }) {
         await signInWithEmailAndPassword(auth, email, password);
         
         // SECURITY: Check if logged-in user is admin (by UID) and reject
+        // We need to check BEFORE signing out to avoid race conditions with route guards
+        let isAdmin = false;
         try {
           const profileRes = await api.get('/me');
           const userRole = profileRes?.data?.role;
-          
-          if (userRole === 'admin') {
-            await auth.signOut();
-            setFormError('Administrator accounts cannot login here. Please use the admin portal.');
-            setLoading(false);
-            return;
-          }
+          isAdmin = userRole === 'admin';
         } catch (checkError) {
           // If account is deleted, sign out immediately and show error
           if (checkError?.response?.status === 401 && 
@@ -245,6 +241,17 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }) {
             return;
           }
           // Other errors are non-fatal for login flow
+        }
+        
+        // If admin detected, sign out immediately and show generic error
+        // This prevents any route guards from redirecting
+        if (isAdmin) {
+          await auth.signOut();
+          // Clear form error and show generic error message like a normal failed login
+          setFormError('');
+          setPasswordError('Invalid email or password');
+          setLoading(false);
+          return;
         }
         
         onClose();
