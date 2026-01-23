@@ -25,6 +25,7 @@ export default function GuideProfile() {
   const [completedView, setCompletedView] = useState('created');
   const tabInitializedRef = useRef(false);
   const [authReady, setAuthReady] = useState(false);
+  const [userReviews, setUserReviews] = useState([]);
 
   // Check auth and redirect if not guide
   useEffect(() => {
@@ -245,6 +246,19 @@ export default function GuideProfile() {
 
       setUpcoming(upcomingHikes);
       setPast(pastHikes);
+
+      // Load user's reviews to check which hikes need review (only for own profile)
+      if (!stateGuideId && !qsUserId) {
+        try {
+          const reviewsRes = await api.get('/reviews/user/me');
+          setUserReviews(reviewsRes.data || []);
+        } catch (e) {
+          console.warn('Failed to load user reviews:', e.message);
+          setUserReviews([]);
+        }
+      } else {
+        setUserReviews([]);
+      }
     } catch (e) {
       console.error("Failed to load profile", e);
       setErr(
@@ -309,6 +323,10 @@ export default function GuideProfile() {
     },
     [upcoming, past]
   );
+
+  const hasReviewedHike = (hikeId) => {
+    return userReviews.some(review => review.hikeId === hikeId);
+  };
 
   async function handleLeave(hikeId) {
     try {
@@ -560,6 +578,7 @@ export default function GuideProfile() {
                     allowLeave={false}
                     userProfile={me}
                     fromProfile={true}
+                    needsReview={!isPublicView && !hasReviewedHike(h.id)}
                     isPublicView={isPublicView}
                   />
                 ))}
