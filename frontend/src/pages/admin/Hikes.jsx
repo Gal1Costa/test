@@ -135,6 +135,11 @@ export default function Hikes() {
     { key: 'name', title: 'Title' },
     { key: 'guideName', title: 'Guide' },
     { key: 'date', title: 'Date', render: (r) => (r.date ? new Date(r.date).toLocaleDateString() : '—') },
+    { key: 'status', title: 'Status', render: (r) => {
+      const status = r.status || 'ACTIVE';
+      const statusColor = status === 'DELETED' ? '#f44336' : '#4caf50';
+      return <span style={{ padding: '2px 6px', borderRadius: 3, background: statusColor, color: '#fff', fontSize: '0.85em' }}>{status}</span>;
+    }},
     { 
       key: 'participantsCount', 
       title: 'Participants', 
@@ -165,27 +170,32 @@ export default function Hikes() {
         </button>
       )
     },
-    { key: 'actions', title: 'Actions', render: (r) => (
-      <div className="admin-actions" style={{ display: 'flex', gap: 6 }}>
-        <Link to={`/admin/hikes/${r.id}`} className="btn" style={{ textDecoration: 'none' }}>Edit</Link>
-        <button className="btn btn-outline-danger" onClick={() => handleDelete(r)}>Delete</button>
-      </div>
-    )},
+    { key: 'actions', title: 'Actions', render: (r) => {
+      const isDeleted = r.status === 'DELETED';
+      return (
+        <div className="admin-actions" style={{ display: 'flex', gap: 6 }}>
+          <Link to={`/admin/hikes/${r.id}`} className="btn" style={{ textDecoration: 'none', opacity: isDeleted ? 0.5 : 1, pointerEvents: isDeleted ? 'none' : 'auto' }}>Edit</Link>
+          <button className="btn btn-outline-danger" onClick={() => handleDelete(r)} disabled={isDeleted} style={{ opacity: isDeleted ? 0.5 : 1 }}>{isDeleted ? 'Deleted' : 'Delete'}</button>
+        </div>
+      );
+    }},
   ];
 
   return (
     <div className="admin-hikes">
-      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12 }}>
+      <h2>Hikes Management</h2>
+      
+      <div className="admin-filter-bar">
         <input className="admin-search-bar" placeholder="Search hikes" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} />
-        <div>Showing {filtered.length} results</div>
+        <div className="admin-results-count">Showing {filtered.length} results</div>
       </div>
 
       <DataTable columns={columns} data={pageItems} />
 
-      <div style={{ marginTop:12, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <div>Page {page} / {pages} — {total} results</div>
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={async () => { const p = Math.max(1, page-1); setPage(p); const res = await listHikes({ page: p, pageSize, q: query }); setHikes(Array.isArray(res.items) ? res.items : []); setTotal(res.total || 0); }} disabled={page===1}>Prev</button>
+      <div className="pagination">
+        <div className="pagination-info">Page {page} of {pages} — {total} total</div>
+        <div className="pagination-controls">
+          <button onClick={async () => { const p = Math.max(1, page-1); setPage(p); const res = await listHikes({ page: p, pageSize, q: query }); setHikes(Array.isArray(res.items) ? res.items : []); setTotal(res.total || 0); }} disabled={page===1}>Previous</button>
           <button onClick={async () => { const p = Math.min(pages, page+1); setPage(p); const res = await listHikes({ page: p, pageSize, q: query }); setHikes(Array.isArray(res.items) ? res.items : []); setTotal(res.total || 0); }} disabled={page===pages}>Next</button>
         </div>
       </div>

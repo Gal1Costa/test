@@ -130,6 +130,8 @@ if (difficulty) {
       });
     }
 
+    // Always exclude deleted hikes from Explore
+    and.push({ status: { not: 'DELETED' } });
     const where = and.length ? { AND: and } : {};
 
     console.log("[listHikes] Prisma where clause:", JSON.stringify(where, null, 2));

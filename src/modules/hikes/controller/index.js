@@ -723,8 +723,6 @@ router.put('/:id', upload.fields([{ name: 'cover' }]), async (req, res, next) =>
 // DELETE /api/hikes/:id
 router.delete('/:id', async (req, res, next) => {
   try {
-    if (!repo?.deleteHike) return send501(res, 'deleteHike not implemented');
-
     // Verify ownership (same logic as PUT endpoint)
     const firebaseUid = req.user?.firebaseUid || req.user?.id || null;
     if (!firebaseUid) return send401(res, 'You must be authenticated to delete a hike');
@@ -747,7 +745,17 @@ router.delete('/:id', async (req, res, next) => {
     if (!hike) return send404(res, 'Hike not found');
     if (!isAdmin && hike.guideId !== profile.guide.id) return send403(res, 'You can only delete your own hikes');
 
-    await repo.deleteHike(req.params.id);
+    // Soft delete: set status to DELETED
+    await prisma.hike.update({
+      where: { id: req.params.id },
+      data: { status: 'DELETED' }
+    });
+    
+    // Remove all bookings (participants) from this hike
+    await prisma.booking.deleteMany({ where: { hikeId: req.params.id } }).catch(() => {});
+    
+    // Keep reviews - they remain associated with the guide
+    
     res.status(204).end();
   } catch (err) { next(err); }
 });

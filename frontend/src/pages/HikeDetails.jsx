@@ -52,6 +52,7 @@ export default function HikeDetails() {
   const [editMode, setEditMode] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   // Listen for auth state changes
   useEffect(() => {
@@ -251,7 +252,11 @@ export default function HikeDetails() {
   const backLabel = fromProfile ? 'Back to Profile' : 'Back to Explore';
 
   async function handleDelete() {
-    if (!window.confirm('Are you sure you want to delete this hike? This cannot be undone.')) return;
+    setDeleteConfirmOpen(true);
+  }
+
+  async function confirmDelete() {
+    setDeleteConfirmOpen(false);
     setDeleting(true);
     try {
       const response = await api.delete(`/hikes/${hike.id}`);
@@ -653,6 +658,111 @@ export default function HikeDetails() {
                 deleting={deleting}
               />
           )}
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirmOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '12px',
+            padding: '32px',
+            maxWidth: '480px',
+            width: '100%',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                background: '#fee2e2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px'
+              }}>⚠️</div>
+              <h3 style={{
+                margin: 0,
+                fontSize: '20px',
+                fontWeight: '700',
+                color: '#0f172a'
+              }}>Delete Hike?</h3>
+            </div>
+            
+            <p style={{
+              margin: '0 0 24px 0',
+              fontSize: '15px',
+              color: '#64748b',
+              lineHeight: '1.6'
+            }}>
+              Are you sure you want to delete <strong style={{ color: '#0f172a' }}>"{hike?.title}"</strong>? 
+              This will remove all participants from this hike. Reviews will be preserved.
+            </p>
+
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => setDeleteConfirmOpen(false)}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb',
+                  background: '#fff',
+                  color: '#374151',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.background = '#f9fafb'}
+                onMouseLeave={(e) => e.target.style.background = '#fff'}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#dc2626',
+                  color: '#fff',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  opacity: deleting ? 0.6 : 1,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => !deleting && (e.target.style.background = '#b91c1c')}
+                onMouseLeave={(e) => !deleting && (e.target.style.background = '#dc2626')}
+              >
+                {deleting ? 'Deleting...' : 'Delete Hike'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       </div>

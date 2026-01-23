@@ -266,12 +266,14 @@ router.get('/hikes', requireRole(['admin']), async (req, res, next) => {
     const pageSize = Math.min(200, Math.max(5, parseInt(req.query.pageSize, 10) || 20));
     const q = (req.query.q || '').trim();
 
-    const where = q ? {
-      OR: [
+    // Always show all hikes, including DELETED
+    let where = {};
+    if (q) {
+      where.OR = [
         { title: { contains: q, mode: 'insensitive' } },
         { location: { contains: q, mode: 'insensitive' } },
-      ],
-    } : {};
+      ];
+    }
 
     const [total, items] = await Promise.all([
       prisma.hike.count({ where }),
@@ -293,6 +295,7 @@ router.get('/hikes', requireRole(['admin']), async (req, res, next) => {
       date: i.date,
       participantsCount: i._count?.bookings || 0,
       distance: i.distance,
+      status: i.status || 'ACTIVE',
     }));
 
     res.json({ items: mapped, total, page, pageSize });
@@ -411,15 +414,23 @@ router.delete('/bookings/:id', requireRole(['admin']), async (req, res, next) =>
   }
 });
 
-// DELETE /api/admin/hikes/:id  -> admin may permanently remove a hike (and related records)
+// DELETE /api/admin/hikes/:id  -> soft delete hike (set status to DELETED)
 router.delete('/hikes/:id', requireRole(['admin']), async (req, res, next) => {
   try {
     const { id } = req.params;
-    // remove dependent reviews and bookings first to avoid FK constraints
-    await prisma.review.deleteMany({ where: { hikeId: id } }).catch(() => {});
+    
+    // Soft delete hike: set status to DELETED
+    await prisma.hike.update({
+      where: { id },
+      data: { status: 'DELETED' }
+    });
+    
+    // Remove all bookings (participants) from this hike
     await prisma.booking.deleteMany({ where: { hikeId: id } }).catch(() => {});
-    await prisma.hike.delete({ where: { id } });
-    try { await recordAudit({ actorId: req.user?.id || null, actorEmail: req.user?.email || null, action: 'delete_hike', resource: 'hike', resourceId: id }); } catch (e) {}
+    
+    // Keep reviews - they remain associated with the guide
+    
+    try { await recordAudit({ actorId: req.user?.id || null, actorEmail: req.user?.email || null, action: 'soft_delete_hike', resource: 'hike', resourceId: id }); } catch (e) {}
     return res.status(204).end();
   } catch (err) {
     next(err);
@@ -470,18 +481,29 @@ router.delete('/guides/:id', requireRole(['admin']), async (req, res, next) => {
       return res.status(404).json({ error: 'Guide not found' });
     }
     
-    // Soft delete: mark the guide's user as DELETED (keep email and name for admin visibility)
-    if (guide.userId) {
-      await prisma.user.update({
-        where: { id: guide.userId },
+    // Atomic cascading soft-delete for guide, hikes, and bookings
+    await prisma.$transaction(async (tx) => {
+      // Soft delete user
+      if (guide.userId) {
+        await tx.user.update({
+          where: { id: guide.userId },
+          data: { status: 'DELETED' }
+        });
+      }
+      // Soft delete guide profile
+      await tx.guide.update({
+        where: { id },
         data: { status: 'DELETED' }
       });
-    }
-    
-    // Also mark the guide profile as deleted
-    await prisma.guide.update({
-      where: { id },
-      data: { status: 'DELETED' }
+      // Find all hikes by this guide
+      const hikes = await tx.hike.findMany({ where: { guideId: id } });
+      // Soft delete all hikes
+      await tx.hike.updateMany({ where: { guideId: id }, data: { status: 'DELETED' } });
+      // Remove all bookings for these hikes
+      const hikeIds = hikes.map(h => h.id);
+      if (hikeIds.length > 0) {
+        await tx.booking.deleteMany({ where: { hikeId: { in: hikeIds } } });
+      }
     });
     
     try { 
