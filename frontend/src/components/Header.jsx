@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { auth, onAuthStateChanged } from '../firebase';
 import api from '../api';
@@ -8,6 +8,7 @@ export default function Header({ onOpenAuthModal }) {
   const [user, setUser] = useState(auth.currentUser);
   const [userRole, setUserRole] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuContainerRef = useRef(null);
   const navigate = useNavigate();
 
   const fetchUserRole = useCallback(async () => {
@@ -59,6 +60,24 @@ export default function Header({ onOpenAuthModal }) {
     if (!holdForSignup && auth.currentUser) fetchUserRole();
   }, [fetchUserRole]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handleClickOutside = (event) => {
+      if (menuContainerRef.current && !menuContainerRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+
+    // Use capture phase to handle clicks before they bubble
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [menuOpen]);
+
   async function handleSignOut() {
     try {
       await auth.signOut();
@@ -104,7 +123,7 @@ export default function Header({ onOpenAuthModal }) {
         {!isVisitor && (
           <>
             {(isGuide || isHiker) && (
-              <div className="menu-container">
+              <div className="menu-container" ref={menuContainerRef}>
                 <button onClick={() => setMenuOpen(!menuOpen)} className="hamburger-btn">
                   <div className="hamburger-line"></div>
                   <div className="hamburger-line"></div>

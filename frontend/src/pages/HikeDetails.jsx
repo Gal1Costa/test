@@ -135,6 +135,23 @@ export default function HikeDetails() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authReady, id, user]);
 
+  // Make header inactive when delete confirmation dialog opens (same as AuthModal)
+  useEffect(() => {
+    if (!deleteConfirmOpen) return;
+
+    const header = document.querySelector('header');
+    if (header) {
+      header.setAttribute('aria-hidden', 'true');
+      header.setAttribute('inert', '');
+    }
+
+    return () => {
+      if (header) {
+        header.removeAttribute('aria-hidden');
+        header.removeAttribute('inert');
+      }
+    };
+  }, [deleteConfirmOpen]);
 
   const joinedSet = useMemo(() => new Set(joinedIds), [joinedIds]);
   
@@ -292,7 +309,7 @@ export default function HikeDetails() {
 
       {/* Content container with padding */}
       <div style={{ padding: 16 }}>
-        <div className="hike-details-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start' }}>
+        <div className="hike-details-grid">
           {/* Left (main) column */}
           <div className="main-content-mobile">
             {/* Title below image */}
@@ -665,15 +682,12 @@ export default function HikeDetails() {
       {deleteConfirmOpen && (
         <div style={{
           position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.4)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 9999,
+          zIndex: 11000,
           padding: '20px'
         }}>
           <div style={{
