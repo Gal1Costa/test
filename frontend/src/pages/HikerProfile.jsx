@@ -333,7 +333,7 @@ export default function HikerProfile() {
                   allowLeave={false}
                   userProfile={me}
                   fromProfile={true}
-                  needsReview={!hasReviewedHike(h.id)}
+                  needsReview={!isPublicView && !hasReviewedHike(h.id)}
                   isPublicView={isPublicView}
                 />
               ))}
