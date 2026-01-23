@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { auth, updatePassword, updateProfile, reauthenticateWithCredential, EmailAuthProvider } from '../firebase';
 import api from '../api';
 import './EditProfileModal.css';
 
 export default function EditProfileModal({ isOpen, onClose, user, onSave, onDelete, deleteInProgress, isPublicView }) {
+  const modalRef = useRef(null);
+  const previouslyFocused = useRef(null);
   const [formData, setFormData] = useState({
     name: '',
     location: '',
@@ -39,6 +41,80 @@ export default function EditProfileModal({ isOpen, onClose, user, onSave, onDele
       }
     }
   }, [isOpen, user]);
+
+  // Focus management and keyboard trapping (same as AuthModal)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previouslyFocused.current = document.activeElement;
+
+    const getFocusable = () => {
+      if (!modalRef.current) return [];
+      const focusableSelectors = [
+        'button',
+        '[href]',
+        'input',
+        'select',
+        'textarea',
+        '[tabindex]:not([tabindex="-1"])',
+      ].join(',');
+
+      return Array.from(modalRef.current.querySelectorAll(focusableSelectors))
+        .filter((el) => !el.disabled && el.offsetParent !== null);
+    };
+
+    const focusable = getFocusable();
+    if (focusable.length) {
+      focusable[0].focus();
+    }
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose?.();
+        return;
+      }
+
+      if (e.key !== 'Tab') return;
+
+      const items = getFocusable();
+      if (!items.length) return;
+
+      const first = items[0];
+      const last = items[items.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    const handleFocusCapture = (e) => {
+      if (modalRef.current && !modalRef.current.contains(e.target)) {
+        const items = getFocusable();
+        if (items.length) {
+          items[0].focus();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('focus', handleFocusCapture, true);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('focus', handleFocusCapture, true);
+
+      if (previouslyFocused.current && previouslyFocused.current.focus) {
+        previouslyFocused.current.focus();
+      }
+    };
+  }, [isOpen, onClose]);
 
   async function checkRoleRequestStatus() {
     try {
@@ -188,7 +264,15 @@ export default function EditProfileModal({ isOpen, onClose, user, onSave, onDele
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div 
+        className="modal-content" 
+        onClick={(e) => e.stopPropagation()}
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Edit Profile"
+        tabIndex="-1"
+      >
         <div className="modal-header">
           <h2>Edit Profile</h2>
           <button className="modal-close" onClick={onClose}>×</button>
