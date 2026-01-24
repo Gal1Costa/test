@@ -87,9 +87,16 @@ jobs:
           echo "Backend did not become healthy in time"; exit 1
 
       - name: Test Prisma migrations
-        run: npx prisma migrate deploy
-        env:
-          DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+        shell: bash
+        run: |
+          # Convert DATABASE_URL from Docker hostname (db) to localhost for runner
+          # The migration test runs on GitHub Actions runner, not in Docker container
+          DB_URL="${{ secrets.CI_DATABASE_URL }}"
+          # Replace 'db:' or '@db:' with 'localhost:' for connection from runner
+          DB_URL="${DB_URL/@db:/@localhost:}"
+          DB_URL="${DB_URL/db:/localhost:}"
+          echo "Running migrations with: ${DB_URL}"
+          DATABASE_URL="${DB_URL}" npx prisma migrate deploy
 
       - name: API validation (if script present)
         shell: bash
